@@ -71,6 +71,7 @@ class Task:
     notes: str = ""
     created: Optional[dt.datetime] = None
     clean_kind: str = ""  # sheet column "Kind" (CHECKOUT, STAY-OVER, MAINTENANCE, ...)
+    display: str = ""
 
     @property
     def code(self) -> Optional[str]:
@@ -96,6 +97,7 @@ class Task:
 class RateCard:
     def __init__(self, data: dict):
         self.apts = data["apartments"]
+        self.suffix = data.get("config_suffix", {})
 
     @classmethod
     def load(cls, path: str) -> "RateCard":
@@ -126,6 +128,17 @@ class RateCard:
         if not a or cfg is None:
             return None
         return a["fees"].get(cfg)
+
+    def display(self, apt: str, config: Optional[str]) -> str:
+        """Sheet/Zalo name, e.g. 'Q7-B1.17.09 (1PN)'. Suffix only for units with more than one bookable config."""
+        a = self.apts.get(apt)
+        if not a:
+            return apt
+        base = a.get("display", apt)
+        cfg = self.config_for(apt, config)
+        if len(a["fees"]) > 1 and cfg:
+            return f"{base} ({self.suffix.get(cfg, cfg)})"
+        return base
 
     def canonical_label(self, apt: str, label: Optional[str]) -> Optional[str]:
         """Rate-card label for an alias (B9.28 "1BR" -> "Studio"); None when the label is already canonical/unknown."""
@@ -266,7 +279,7 @@ def plan(
         verification = "calendar+ledger" if b.code in ledger_codes else "calendar_only"
         arrivals = [o.code for o in reserved if o.apt == b.apt and o.start == b.end and o.code != b.code]
         row = {"key": f"AUTO|{b.apt}|{b.code}", "date": b.end.isoformat(), "apt": b.apt,
-               "cleaner": rc.cleaner(b.apt), "config": cfg, "fee": fee, "status": "PLANNED",
+               "cleaner": rc.cleaner(b.apt), "config": cfg, "display": rc.display(b.apt, cfg), "fee": fee, "status": "PLANNED",
                "source_id": f"AIRBNB|{b.code}", "verification": verification,
                "same_day": f"YES - {arrivals[0]} check-in" if arrivals else ""}
         ops.append({"op": "ADD", "tier": "auto_safe", "key": row["key"], "apt": b.apt, "date": row["date"],
@@ -292,6 +305,14 @@ def plan(
             if canon and canon != t.config:
                 ops.append(_op("TIDY_TYPE", "auto_safe", t, f"Type {t.config!r} -> rate-card label {canon!r}",
                                new_type=canon))
+
+    # data tidy: sync-written rows that carry the bare apartment name in Display -> sheet/Zalo display name.
+    # Only rows whose Display is empty or equals the apartment name: owner-typed displays are never touched.
+    for t in active:
+        if t.status in ACTIVE and t.date >= today and t.display in ("", t.apt):
+            want = rc.display(t.apt, rc.canonical_label(t.apt, t.config) or t.config)
+            if want and want != t.display:
+                ops.append(_op("TIDY_DISPLAY", "auto_safe", t, f"Display {t.display!r} -> {want!r}", new_display=want))
 
     # duplicate same-date cleans (same apartment, date and kind), report only
     seen: dict = {}

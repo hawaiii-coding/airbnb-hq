@@ -6,14 +6,16 @@
       "default_config": "Studio",
       "fees": {
         "Studio": 80000
-      }
+      },
+      "display": "Q7-B6.12A"
     },
     "Sunrise B14.20": {
       "cleaner": "Thuy",
       "default_config": "Studio",
       "fees": {
         "Studio": 80000
-      }
+      },
+      "display": "Q7-B14.20"
     },
     "Sunrise B9.28": {
       "cleaner": "Thuy",
@@ -24,7 +26,8 @@
       "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
       "aliases": {
         "1BR": "Studio"
-      }
+      },
+      "display": "Q7-B9.28"
     },
     "Sunrise B20.10": {
       "cleaner": "Thuy",
@@ -35,14 +38,16 @@
       "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
       "aliases": {
         "1BR": "Studio"
-      }
+      },
+      "display": "Q7-B20.10"
     },
     "Lavida B1.1319": {
       "cleaner": "Thuy",
       "default_config": "2-bed studio",
       "fees": {
         "2-bed studio": 80000
-      }
+      },
+      "display": "Lavida B1.1319"
     },
     "Lavida B1.1709": {
       "cleaner": "Thuy",
@@ -51,7 +56,8 @@
         "2BR": 180000,
         "1BR": 120000
       },
-      "_note": "2BR 180k, 1BR 120k (owner confirmed 2026-11-09)."
+      "_note": "2BR 180k, 1BR 120k (owner confirmed 2026-11-09).",
+      "display": "Lavida B1.1709"
     },
     "PHK": {
       "cleaner": "Thuy",
@@ -59,7 +65,8 @@
       "fees": {
         "1BR": 120000,
         "2BR": 180000
-      }
+      },
+      "display": "Q2-PHK"
     },
     "Sunrise B18.05": {
       "cleaner": "Linh",
@@ -67,14 +74,16 @@
       "fees": {
         "1BR": 135000,
         "2BR": 200000
-      }
+      },
+      "display": "Q7-B18.05"
     },
     "Rivergate B9.20": {
       "cleaner": "Linh",
       "default_config": "1BR",
       "fees": {
         "1BR": 135000
-      }
+      },
+      "display": "B9.20"
     },
     "Sunrise B14.12a": {
       "cleaner": "Linh",
@@ -82,7 +91,13 @@
       "fees": {
         "Studio": 135000
       },
-      "_note": "135k for Linh per Nov 9 payment (stay-over clean), owner confirmed."
+      "_note": "135k for Linh per Nov 9 payment (stay-over clean), owner confirmed.",
+      "display": "Q7-B14.12a"
     }
-  }
+  },
+  "config_suffix": {
+    "1BR": "1PN",
+    "2BR": "2PN"
+  },
+  "_comment_display": "display = sheet/Zalo name (Q7- prefix = Sunrise only; Lavida keeps its name). Units with more than one bookable config (B1.1709, B18.05) get ' (1PN)'/' (2PN)' from the feed's config."
 }

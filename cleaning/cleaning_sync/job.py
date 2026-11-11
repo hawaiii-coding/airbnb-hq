@@ -62,7 +62,8 @@ def rows_to_tasks(rows):
             continue
         fee = int(float(g("Fee VND"))) if g("Fee VND") not in ("", None) else None
         out.append(Task(g("Key"), d, g("Apartment"), g("Cleaner"), g("Type"), fee, g("Status"),
-                        g("Source ID"), g("Notes"), clean_kind=g("Kind")))
+                        g("Source ID"), g("Notes"), clean_kind=g("Kind"),
+                        display=g("Display")))
     return out
 
 
