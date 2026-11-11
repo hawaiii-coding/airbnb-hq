@@ -304,16 +304,16 @@ def test_plan_report_rows_shape():
 
 
 def test_display_names_and_1pn_2pn():
-    assert RC.display("Lavida B1.1709", "1BR") == "Q7-B1.17.09 (1PN)"
-    assert RC.display("Lavida B1.1709", "2BR") == "Q7-B1.17.09 (2PN)"
+    assert RC.display("Lavida B1.1709", "1BR") == "Lavida B1.1709 (1PN)"
+    assert RC.display("Lavida B1.1709", "2BR") == "Lavida B1.1709 (2PN)"
     assert RC.display("Sunrise B18.05", "2BR") == "Q7-B18.05 (2PN)"
-    assert RC.display("Lavida B1.1319", None) == "Q7-B1.13.19"
+    assert RC.display("Lavida B1.1319", None) == "Lavida B1.1319"
     assert RC.display("Sunrise B9.28", "1BR") == "Q7-B9.28"          # alias -> Studio, single config: no suffix
     b = Booking("HMLLLL0000", "Lavida B1.1709", dt.date(2026, 11, 11), dt.date(2026, 11, 13), "RESERVED", config="1BR")
     row = ops_of(run_plan([], [b], covered={"Lavida B1.1709"}), "ADD")[0]["row"]
-    assert row["display"] == "Q7-B1.17.09 (1PN)"
+    assert row["display"] == "Lavida B1.1709 (1PN)"
     muts, _ = writer.build_mutations(run_plan([], [b], covered={"Lavida B1.1709"})["ops"], [], set(), TODAY)
-    assert muts[0]["row"][H.index("Display")] == "Q7-B1.17.09 (1PN)"
+    assert muts[0]["row"][H.index("Display")] == "Lavida B1.1709 (1PN)"
 
 
 def test_tidy_display_only_bare_names():
@@ -324,12 +324,12 @@ def test_tidy_display_only_bare_names():
     b = Booking("HMMMMM0000", apt, None, t.date, "RESERVED", config="1BR")
     res = run_plan([t], [b], covered={apt})
     td = ops_of(res, "TIDY_DISPLAY")
-    assert td and td[0]["new_display"] == "Q7-B1.17.09 (1PN)"
+    assert td and td[0]["new_display"] == "Lavida B1.1709 (1PN)"
     r = row_of(t)
     r[H.index("Display")] = apt
     sheet = FakeSheet([r])
     writer.commit(sheet, res["ops"], (), TODAY, dry_run=False)
-    assert sheet.rows[0][H.index("Display")] == "Q7-B1.17.09 (1PN)"
+    assert sheet.rows[0][H.index("Display")] == "Lavida B1.1709 (1PN)"
     assert sheet.rows[0][H.index("Status")] == "PLANNED" and sheet.rows[0][H.index("Fee VND")] == "120000"
     t.display = "my own name"                                       # owner-typed display is never touched
     assert not ops_of(run_plan([t], [b], covered={apt}), "TIDY_DISPLAY")
