@@ -44,7 +44,7 @@ def main():
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     today = dt.date.fromisoformat(a.today)
-    horizon = dt.date.fromisoformat(a.horizon) if a.horizon else today + dt.timedelta(days=21)
+    horizon = dt.date.fromisoformat(a.horizon) if a.horizon else today + dt.timedelta(days=45)
     res = plan(load_tasks(a.tasks), load_bookings(a.bookings), RateCard.load(a.rate_card), today, horizon)
     print(json.dumps(res, indent=1) if a.json else render(res, today, horizon))
 

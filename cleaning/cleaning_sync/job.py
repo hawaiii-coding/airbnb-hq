@@ -16,7 +16,9 @@ import os
 
 from . import gcs, gsheets, poller, writer
 from .ledger import LedgerReader
-from .planner import RateCard, Task, parse_date, plan
+from .planner import RateCard, Task, mismatch_report, parse_date, plan
+
+DEFAULT_HORIZON_DAYS = 45
 
 
 def rows_to_tasks(rows):
@@ -31,7 +33,7 @@ def rows_to_tasks(rows):
             continue
         fee = int(float(g("Fee VND"))) if g("Fee VND") not in ("", None) else None
         out.append(Task(g("Key"), d, g("Apartment"), g("Cleaner"), g("Type"), fee, g("Status"),
-                        g("Source ID"), g("Notes")))
+                        g("Source ID"), g("Notes"), clean_kind=g("Kind")))
     return out
 
 
@@ -104,6 +106,16 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
         approved = set(json.load(open(args.approved))) if args.approved else set()
         approved |= set(filter(None, (args.approved_ids or "").split(",")))
         report["commit"] = writer.commit(client, res["ops"], approved, today, dry_run=False)
+    applied = ({m["id"] for m in report["commit"]["mutations"]}
+               if report.get("commit", {}).get("applied") else set())
+    mrows = mismatch_report(res["ops"], applied, dt.datetime.now())
+    report["mismatch_report"] = {"issues": len(mrows) - 2}
+    if args.mode == "apply" and not getattr(args, "no_report", False):
+        try:   # report tab only; a failure here never undoes or blocks the tasks write
+            client.write_report(mrows)
+            report["mismatch_report"]["written"] = True
+        except Exception as e:  # noqa: BLE001
+            report["mismatch_report"]["error"] = f"{type(e).__name__}: {str(e)[:120]}"
     state_store.save({"miss_counts": res["miss_counts"], "updated": dt.datetime.now().isoformat()})
     return report
 
@@ -111,9 +123,10 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["plan", "apply"], default="plan")
-    ap.add_argument("--today"); ap.add_argument("--horizon-days", type=int, default=21)
+    ap.add_argument("--today"); ap.add_argument("--horizon-days", type=int, default=DEFAULT_HORIZON_DAYS)
     ap.add_argument("--grace-polls", type=int, default=4)  # ~1-2h at a 15-30 min poll
     ap.add_argument("--approved"); ap.add_argument("--approved-ids", help="comma-separated op ids from a plan report")
+    ap.add_argument("--no-report", action="store_true", help="skip writing the mismatch_report tab")
     ap.add_argument("--rate-card", default=os.path.join(os.path.dirname(__file__), "..", "rate_card.json"))
     print(json.dumps(run(ap.parse_args()), indent=1, default=str))
 

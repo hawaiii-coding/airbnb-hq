@@ -156,6 +156,22 @@ class GoogleSheetsClient:
                 spreadsheetId=self.sid,
                 body={"ranges": [f"{self.tab}!A{i + 2}:{LAST}{i + 2}" for i in indices]}).execute()
 
+    # ------------------------------------------------------------------ mismatch report tab
+    def write_report(self, rows, tab: str = "mismatch_report"):
+        """Replace the contents of the report tab (created if missing). Same allow-list/production guard as tasks.
+        Never touches the tasks tab."""
+        self._guard()
+        if tab == self.tab:
+            raise WriteNotAllowed("the report must not be written to the tasks tab")
+        meta = self.svc.spreadsheets().get(spreadsheetId=self.sid, fields="sheets.properties.title").execute()
+        if tab not in {s["properties"]["title"] for s in meta.get("sheets", [])}:
+            self.svc.spreadsheets().batchUpdate(
+                spreadsheetId=self.sid, body={"requests": [{"addSheet": {"properties": {"title": tab}}}]}).execute()
+        self.svc.spreadsheets().values().clear(spreadsheetId=self.sid, range=f"{tab}!A:F", body={}).execute()
+        self.svc.spreadsheets().values().update(
+            spreadsheetId=self.sid, range=f"{tab}!A1", valueInputOption="RAW",
+            body={"values": [[str(v) for v in r] for r in rows]}).execute()
+
     # ------------------------------------------------------------------ side channels
     def backup(self, label, rows):
         if not self.backup_sink:

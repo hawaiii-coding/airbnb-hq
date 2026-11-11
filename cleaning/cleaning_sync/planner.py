@@ -25,6 +25,7 @@ from typing import Iterable, Optional
 CODE_RE = re.compile(r"\bHM[A-Z0-9]{8}\b")
 ACTIVE = {"PLANNED", "CONFIRMED"}
 QUICK_MARK = "QUICK-ADD unverified"
+AUTO_CANCEL_POLLS = 2
 OWNER_COLUMNS = ("Cleaner", "Fee VND", "Status", "Confirmed at", "Paid at")
 
 
@@ -69,6 +70,7 @@ class Task:
     source_id: str = ""
     notes: str = ""
     created: Optional[dt.datetime] = None
+    clean_kind: str = ""  # sheet column "Kind" (CHECKOUT, STAY-OVER, MAINTENANCE, ...)
 
     @property
     def code(self) -> Optional[str]:
@@ -124,6 +126,21 @@ class RateCard:
         if not a or cfg is None:
             return None
         return a["fees"].get(cfg)
+
+    def canonical_label(self, apt: str, label: Optional[str]) -> Optional[str]:
+        """Rate-card label for an alias (B9.28 "1BR" -> "Studio"); None when the label is already canonical/unknown."""
+        a = self.apts.get(apt)
+        if not a or not label or label in a["fees"]:
+            return None
+        return a.get("aliases", {}).get(label)
+
+
+def iso(v) -> str:
+    """Any date-ish cell (ISO text, Sheets serial, m/d/yyyy) -> YYYY-MM-DD; unparseable values pass through."""
+    try:
+        return parse_date(v).isoformat()
+    except (ValueError, TypeError):
+        return str(v)
 
 
 # ----------------------------------------------------------------------------- ops
@@ -268,7 +285,26 @@ def plan(
         if t.status == "PLANNED" and t.date < today:
             ops.append(_op("PAST_PLANNED", "needs_owner", t, "date passed, still PLANNED: confirm completed or cancel"))
 
-    # tasks with no booking: watch, never auto-cancel
+    # data tidy: alias labels in Type -> rate-card label (Type is not an owner column; fee is unchanged)
+    for t in active:
+        if t.status in ACTIVE:
+            canon = rc.canonical_label(t.apt, t.config)
+            if canon and canon != t.config:
+                ops.append(_op("TIDY_TYPE", "auto_safe", t, f"Type {t.config!r} -> rate-card label {canon!r}",
+                               new_type=canon))
+
+    # duplicate same-date cleans (same apartment, date and kind), report only
+    seen: dict = {}
+    for t in active:
+        if t.date >= today:
+            seen.setdefault((t.apt, t.date, (t.clean_kind or "CHECKOUT").upper()), []).append(t)
+    for (apt_, d_, k_), ts in seen.items():
+        if len(ts) > 1:
+            for t in ts:
+                ops.append(_op("DUPLICATE_SAME_DATE", "info", t,
+                               f"{len(ts)} active {k_} tasks on {d_}: " + ", ".join(x.key for x in ts)))
+
+    # tasks with no booking: watch; cancel without the owner only when feed AND earnings agree (AUTO_CANCEL)
     for t in active:
         if t.key in matched or t.status not in ACTIVE or t.kind not in ("CODE", "LEGACY"):
             continue
@@ -288,7 +324,12 @@ def plan(
         new_miss[t.key] = n
         confirmed = bool(e and e.gone)
         need = min(2, grace_polls) if confirmed else grace_polls
-        if n >= need:
+        if confirmed and n >= AUTO_CANCEL_POLLS and t.status == "PLANNED" and t.kind == "CODE":
+            # handoff item 1 / BUSINESS_RULES 4: both independent sources agree -> safe to cancel without asking
+            ops.append(_op("AUTO_CANCEL", "auto_safe", t,
+                           f"{t.code} missing from the Airbnb feed for {n} consecutive polls AND no longer in the "
+                           f"Upcoming earnings report", polls=n))
+        elif n >= need:
             how = ("calendar and Airbnb earnings agree it is gone (no longer in the latest Upcoming report)"
                    if confirmed else "absent from feed")
             ops.append(_op("PROPOSE_CANCEL", "needs_owner", t,
@@ -342,6 +383,41 @@ def plan(
     order = {"needs_owner": 0, "auto_safe": 1, "info": 2}
     ops.sort(key=lambda o: (order[o["tier"]], o["date"], o["op"]))
     return {"ops": ops, "miss_counts": new_miss}
+
+
+# ----------------------------------------------------------------------------- mismatch report
+REPORT_CATEGORIES = {
+    "ADD": "Booking without clean",
+    "LEDGER_ONLY_BOOKING": "Booking without clean",
+    "WATCH_MISSING": "Clean without booking",
+    "PROPOSE_CANCEL": "Clean without booking",
+    "AUTO_CANCEL": "Clean without booking",
+    "FEE_MISMATCH": "Fee vs rate card",
+    "FEE_MISSING": "Fee vs rate card",
+    "DUPLICATE_SAME_DATE": "Duplicate same-date clean",
+}
+REPORT_HEADER = ["Date", "Category", "Apartment", "Key", "Check", "Detail"]
+
+
+def mismatch_report(ops, applied_ids, generated: dt.datetime, op_id=None):
+    """Rows for the mismatch_report tab. Ops the writer applied this run (applied_ids) are resolved and dropped,
+    except AUTO_CANCEL, which stays listed so the owner sees what was cancelled."""
+    if op_id is None:
+        from .writer import op_id
+    out = []
+    for o in ops:
+        cat = REPORT_CATEGORIES.get(o["op"])
+        if not cat:
+            continue
+        applied = op_id(o) in applied_ids
+        if applied and o["op"] != "AUTO_CANCEL":
+            continue
+        if o["op"] == "AUTO_CANCEL" and not applied:
+            continue
+        check = "CANCELLED by sync" if o["op"] == "AUTO_CANCEL" else o["op"]
+        out.append([o["date"], cat, o["apt"], o.get("key") or "", check, o["detail"]])
+    out.sort(key=lambda r: (r[1], r[0], r[2]))
+    return [REPORT_HEADER, ["Generated", generated.strftime("%Y-%m-%d %H:%M"), f"{len(out)} issue(s)", "", "", ""]] + out
 
 
 # ----------------------------------------------------------------------------- quick-add
