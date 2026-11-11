@@ -1,0 +1,82 @@
+{
+ "_comment": "Copy to feeds.json OUTSIDE the repo. One env var per feed holds the Airbnb iCal export URL (contains a private token): store them in Secret Manager. Mapping inferred from codes/owner statements; B14.12a (3n80) and B1.1319 (d2hg) are assumptions; one more feed (tupanlpr..., a single block until Nov 2027, apartment unknown) is not listed.",
+ "feeds": [
+  {
+   "feed": "lp0s",
+   "apt": "Sunrise B9.28",
+   "config": "Studio",
+   "url_env": "ICAL_URL_LP0S",
+   "listing_id": "1578330953362629351"
+  },
+  {
+   "feed": "d2hg",
+   "apt": "Lavida B1.1319",
+   "config": "2-bed studio",
+   "url_env": "ICAL_URL_D2HG",
+   "listing_id": "1802950168698107766"
+  },
+  {
+   "feed": "u4fi",
+   "apt": "Sunrise B20.10",
+   "config": "Studio",
+   "url_env": "ICAL_URL_U4FI",
+   "listing_id": "1771709052565351503"
+  },
+  {
+   "feed": "b7l2",
+   "apt": "Sunrise B18.05",
+   "config": "1BR",
+   "url_env": "ICAL_URL_B7L2",
+   "listing_id": "1659291879715312652"
+  },
+  {
+   "feed": "t7kk",
+   "apt": "Sunrise B18.05",
+   "config": "2BR",
+   "url_env": "ICAL_URL_T7KK",
+   "listing_id": "1659281608158753366"
+  },
+  {
+   "feed": "3n80",
+   "apt": "Sunrise B14.12a",
+   "config": "Studio",
+   "url_env": "ICAL_URL_3N80",
+   "listing_id": "1649980026693181990"
+  },
+  {
+   "feed": "2ds9",
+   "apt": "Sunrise B14.20",
+   "config": "Studio",
+   "url_env": "ICAL_URL_2DS9",
+   "listing_id": "1636155110861824940"
+  },
+  {
+   "feed": "9j4q",
+   "apt": "Lavida B1.1709",
+   "config": "1BR",
+   "url_env": "ICAL_URL_9J4Q",
+   "listing_id": "1775373979319377508"
+  },
+  {
+   "feed": "keqo",
+   "apt": "Rivergate B9.20",
+   "config": "1BR",
+   "url_env": "ICAL_URL_KEQO",
+   "listing_id": "1631952285608225276"
+  },
+  {
+   "feed": "a8uo",
+   "apt": "Sunrise B6.12A",
+   "config": "Studio",
+   "url_env": "ICAL_URL_A8UO",
+   "listing_id": "1808721256837665510"
+  },
+  {
+   "feed": "7vnp",
+   "apt": "Lavida B1.1709",
+   "config": "2BR",
+   "url_env": "ICAL_URL_7VNP",
+   "listing_id": "1775139343742313704"
+  }
+ ]
+}

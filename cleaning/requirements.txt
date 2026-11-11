@@ -1,0 +1,5 @@
+# NOTE: unpinned for now. Before production, pin exact versions (and hashes, like the earnings worker).
+google-api-python-client
+google-auth
+google-cloud-storage
+requests
