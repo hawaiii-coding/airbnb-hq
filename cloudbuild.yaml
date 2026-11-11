@@ -6,6 +6,8 @@ substitutions:
   _SPREADSHEET_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI   # PRODUCTION Master Financial Tracker (scratch test passed 2026-11-11)
   _IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/live-availability
   _CLEAN_PROD_SHEET: 1JNJjayasaaLYtUOIe_ukbkolcfsuo1BgnLsgne21T5Y   # PRODUCTION Cleaning Operations V2
+  _CLEAN_SCRATCH_SHEET: 1GxwOXraRTghhRI_JQfwFkIkvnE-MwBF2bjE2wB47Cxo
+  _CLEAN_SECRETS: ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest   # must match cleaning/feeds.example.json (tested)
   _LEDGER_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI
   _CLEAN_IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/cleaning-sync
 
@@ -13,7 +15,7 @@ steps:
   - id: test
     name: python:3.12-slim
     entrypoint: bash
-    args: ["-c", "pip install -q pytest && python -m pytest -q"]
+    args: ["-c", "pip install -q pytest pyyaml && python -m pytest -q"]
 
   - id: build
     name: gcr.io/cloud-builders/docker
@@ -67,13 +69,14 @@ steps:
     args:
       - -c
       - |
-        secrets=$$(python3 -c "import json;print(','.join('%s=ical-url-%s:latest'%(f['url_env'],f['feed']) for f in json.load(open('cleaning/feeds.example.json'))['feeds']))")
         gcloud run jobs deploy cleaning-sync-prod --region ${_REGION} \
           --image ${_CLEAN_IMAGE}:${SHORT_SHA} --service-account ${_SA} \
           --max-retries 0 --task-timeout 300 \
           --args=--mode=plan,--horizon-days=45 \
-          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=,LEDGER_SPREADSHEET_ID=${_LEDGER_ID},BACKUP_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod,STATE_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod" \
-          --set-secrets "$$secrets"
+          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=,LEDGER_SPREADSHEET_ID=${_LEDGER_ID},BACKUP_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod,STATE_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod,PLAN_REPORT_SPREADSHEET_ID=${_CLEAN_SCRATCH_SHEET}" \
+          --set-secrets "${_CLEAN_SECRETS}"
+        # read-only run right after deploy; its plan lands in tab prod_plan of the SCRATCH sheet
+        gcloud run jobs execute cleaning-sync-prod --region ${_REGION} --wait
 
 options:
   logging: CLOUD_LOGGING_ONLY

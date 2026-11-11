@@ -40,6 +40,16 @@ def resolved_ids(commit_report) -> set:
     return done
 
 
+def plan_report_rows(report) -> list:
+    led = report.get("ledger") or {}
+    head = [["Tier", "Op", "Date", "Apartment", "Key", "Detail"],
+            ["Generated", report["today"], dt.datetime.now().strftime("%Y-%m-%d %H:%M UTC"), f"mode {report['mode']}",
+             f"feeds failed: {len(report['feeds_failed'])}",
+             f"ledger usable: {led.get('usable')} ({led.get('codes')} codes, latest {led.get('latest_import')})"]]
+    head += [["FEED_FAILED", f["feed"], "", f["apt"], "", f["error"]] for f in report["feeds_failed"]]
+    return head + [[o["tier"], o["op"], o["date"], o["apt"], o.get("key") or "", o["detail"]] for o in report["ops"]]
+
+
 def rows_to_tasks(rows):
     out = []
     for r in rows:
@@ -128,6 +138,16 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
     applied = resolved_ids(report.get("commit"))
     mrows = mismatch_report(res["ops"], applied, dt.datetime.now())
     report["mismatch_report"] = {"issues": len(mrows) - 2}
+    pid = env.get("PLAN_REPORT_SPREADSHEET_ID", "")
+    if args.mode == "plan" and pid:
+        try:   # read-only run: copy the plan to a NON-production sheet (scratch) so it can be reviewed there
+            if pid == sid or pid in gsheets.PRODUCTION_IDS:
+                raise gsheets.WriteNotAllowed("plan report must go to a non-production sheet")
+            rclient = gsheets.GoogleSheetsClient(pid, service or gsheets.build_service(), allowed_ids={pid})
+            rclient.write_report(plan_report_rows(report), tab="prod_plan")
+            report["plan_report"] = {"written": True}
+        except Exception as e:  # noqa: BLE001
+            report["plan_report"] = {"error": f"{type(e).__name__}: {str(e)[:120]}"}
     if args.mode == "apply" and not getattr(args, "no_report", False):
         try:   # report tab only; a failure here never undoes or blocks the tasks write
             client.write_report(mrows)
