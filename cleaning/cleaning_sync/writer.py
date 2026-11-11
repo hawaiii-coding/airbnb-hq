@@ -36,8 +36,9 @@ ALLOWED_COLUMNS = {
     "PROPOSE_CANCEL": {"Status", "Notes"},
     "AUTO_CANCEL": {"Status", "Notes"},   # PLANNED -> CANCELLED only, when feed AND earnings ledger agree
     "TIDY_TYPE": {"Type", "Notes"},
+    "TIDY_DISPLAY": {"Display"},
 }
-AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY", "AUTO_CANCEL", "TIDY_TYPE"}
+AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY", "AUTO_CANCEL", "TIDY_TYPE", "TIDY_DISPLAY"}
 MAX_AUTO_CANCELS = 3   # more than this in one run looks like a data problem, not real cancellations
 APPROVABLE_OPS = {"MOVE_DATE", "FEE_MISMATCH", "PROPOSE_CANCEL"}
 NEVER = {"Cleaner", "Confirmed at", "Paid at", "Key"}
@@ -108,7 +109,7 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
                 raise GuardError(f"plan wants more than {max_adds} new rows: refusing")
             note = f"SYNC {today.isoformat()}: new from feed ({r['verification']}); owner columns set from rate card"
             new = [""] * len(HEADER)
-            for name, val in (("Key", r["key"]), ("Date", iso(r["date"])), ("Apartment", r["apt"]), ("Display", r["apt"]),
+            for name, val in (("Key", r["key"]), ("Date", iso(r["date"])), ("Apartment", r["apt"]), ("Display", r.get("display") or r["apt"]),
                               ("Cleaner", r["cleaner"]), ("Type", r["config"]), ("Kind", "CHECKOUT"),
                               ("Notes", note), ("Same-day arrival", r.get("same_day", "")),
                               ("Fee VND", str(r["fee"])), ("Status", "PLANNED"),
@@ -163,6 +164,11 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
                 continue
             cells["Type"] = op["new_type"]
             cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: Type {row[_col('Type')]} -> {op['new_type']} (rate card)")
+        elif kind == "TIDY_DISPLAY":
+            if row[_col("Display")] not in ("", row[_col("Apartment")]):
+                skipped.append((oid, "Display was set by hand: left alone"))
+                continue
+            cells["Display"] = op["new_display"]
         elif kind == "PROPOSE_CANCEL":
             if row[_col("Status")] != "PLANNED":
                 skipped.append((oid, f"status {row[_col('Status')]}: only PLANNED rows can be cancelled"))
