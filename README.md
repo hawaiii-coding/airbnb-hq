@@ -12,7 +12,7 @@ Local test: `pip install pytest && python -m pytest -q`
 Dry run (no write): `python -m jobs.live_availability --dry-run`
 
 Deploy (gcloud logged in):
-1. `PROJECT=… SA=… scripts/create_feed_secrets.sh`  (paste each iCal URL; hidden)
+1. Feed secrets already exist (ical-url-xxxx, from cleaning-sync); mapping in config/listings.json. Only for a NEW listing: add its secret and a config row.
 2. `PROJECT=… REGION=… SA=… SPREADSHEET_ID=<scratch copy> scripts/deploy_live_availability.sh`
 3. Run once, check the tab, then redeploy with the production SPREADSHEET_ID.
 4. `scripts/schedule_live_availability.sh`, then resume the scheduler.

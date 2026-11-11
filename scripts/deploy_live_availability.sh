@@ -5,7 +5,7 @@ set -euo pipefail
 : "${PROJECT:?}"; : "${REGION:?}"; : "${SA:?}"; : "${SPREADSHEET_ID:?}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/airbnb-hq/live-availability:$(git rev-parse --short HEAD)"
 gcloud builds submit --project "$PROJECT" --tag "$IMAGE" .
-secrets=$(python3 -c "import json;print(','.join('ICAL_URL_%s=ical-url-%s:latest'%(l['key'],l['key'].lower().replace('_','-')) for l in json.load(open('config/listings.json'))['listings']))")
+secrets=$(python3 -c "import json;print(','.join('ICAL_URL_%s=%s:latest'%(l['key'],l['secret']) for l in json.load(open('config/listings.json'))['listings']))")
 gcloud run jobs deploy live-availability --project "$PROJECT" --region "$REGION" \
   --image "$IMAGE" --service-account "$SA" --max-retries 1 --task-timeout 300 \
   --set-env-vars "SPREADSHEET_ID=${SPREADSHEET_ID},WRITE_ALLOWED_IDS=${SPREADSHEET_ID},HORIZON_DAYS=60" \
