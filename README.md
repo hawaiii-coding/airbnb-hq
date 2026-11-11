@@ -18,4 +18,4 @@ Deploy (gcloud logged in):
 4. `scripts/schedule_live_availability.sh`, then resume the scheduler.
 
 The worker service account needs Editor access on the target spreadsheet.
-Two listing IDs in config/listings.json are UNCONFIRMED (probably PHK); confirm or remove.
+PHK listings were dropped (owner, 2026-11-11). 11 feeds remain.
