@@ -5,6 +5,8 @@ substitutions:
   _SA: airbnb-worker@airbnb-business-hq.iam.gserviceaccount.com
   _SPREADSHEET_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI   # PRODUCTION Master Financial Tracker (scratch test passed 2026-11-11)
   _IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/live-availability
+  _CLEAN_PROD_SHEET: 1JNJjayasaaLYtUOIe_ukbkolcfsuo1BgnLsgne21T5Y   # PRODUCTION Cleaning Operations V2
+  _LEDGER_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI
   _CLEAN_IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/cleaning-sync
 
 steps:
@@ -55,6 +57,23 @@ steps:
         gcloud run jobs update cleaning-sync-scratch --region ${_REGION} \
           --image ${_CLEAN_IMAGE}:${SHORT_SHA} \
           --args=--mode=apply,--horizon-days=45
+
+  # ---- cleaning sync, PRODUCTION, READ-ONLY (--mode plan). Step 1 of the production switch.
+  # WRITE_ALLOWED_IDS is empty and ALLOW_PRODUCTION_WRITES is unset, so even --mode apply could not write.
+  # No schedule: run by hand. Its own state prefix so miss counts never mix with scratch.
+  - id: deploy-cleaning-prod-plan
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        secrets=$$(python3 -c "import json;print(','.join('%s=ical-url-%s:latest'%(f['url_env'],f['feed']) for f in json.load(open('cleaning/feeds.example.json'))['feeds']))")
+        gcloud run jobs deploy cleaning-sync-prod --region ${_REGION} \
+          --image ${_CLEAN_IMAGE}:${SHORT_SHA} --service-account ${_SA} \
+          --max-retries 0 --task-timeout 300 \
+          --args=--mode=plan,--horizon-days=45 \
+          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=,LEDGER_SPREADSHEET_ID=${_LEDGER_ID},BACKUP_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod,STATE_GCS_URI=gs://airbnb-business-hq-airbnb-worker-state/cleaning-sync-prod" \
+          --set-secrets "$$secrets"
 
 options:
   logging: CLOUD_LOGGING_ONLY
