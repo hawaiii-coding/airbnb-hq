@@ -1,0 +1,88 @@
+{
+  "_comment": "Owner rules 2026-11-09: cleaner is fixed per apartment; studios are 80,000 VND when Thuy cleans. Fee is per cleaning shift (maintenance cleans = N shifts).",
+  "apartments": {
+    "Sunrise B6.12A": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      }
+    },
+    "Sunrise B14.20": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      }
+    },
+    "Sunrise B9.28": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
+      "aliases": {
+        "1BR": "Studio"
+      }
+    },
+    "Sunrise B20.10": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
+      "aliases": {
+        "1BR": "Studio"
+      }
+    },
+    "Lavida B1.1319": {
+      "cleaner": "Thuy",
+      "default_config": "2-bed studio",
+      "fees": {
+        "2-bed studio": 80000
+      }
+    },
+    "Lavida B1.1709": {
+      "cleaner": "Thuy",
+      "default_config": "2BR",
+      "fees": {
+        "2BR": 180000,
+        "1BR": 120000
+      },
+      "_note": "2BR 180k, 1BR 120k (owner confirmed 2026-11-09)."
+    },
+    "PHK": {
+      "cleaner": "Thuy",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 120000,
+        "2BR": 180000
+      }
+    },
+    "Sunrise B18.05": {
+      "cleaner": "Linh",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 135000,
+        "2BR": 200000
+      }
+    },
+    "Rivergate B9.20": {
+      "cleaner": "Linh",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 135000
+      }
+    },
+    "Sunrise B14.12a": {
+      "cleaner": "Linh",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 135000
+      },
+      "_note": "135k for Linh per Nov 9 payment (stay-over clean), owner confirmed."
+    }
+  }
+}
