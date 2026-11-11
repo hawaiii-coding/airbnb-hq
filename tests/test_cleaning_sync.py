@@ -348,3 +348,75 @@ def test_hcmc_time_is_utc_plus_7():
     from cleaning_sync import job
     diff = job.now_hcmc() - dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     assert abs(diff - dt.timedelta(hours=7)) < dt.timedelta(minutes=1)
+
+
+
+# ------------------------------------------------------------------ Sunday payroll + schedule
+def _wrow(key, date, apt, disp, cleaner, fee, status="COMPLETED", kind="CHECKOUT", time=""):
+    r = [""] * len(H)
+    for n, v in (("Key", key), ("Date", date), ("Apartment", apt), ("Display", disp), ("Cleaner", cleaner),
+                 ("Fee VND", str(fee)), ("Status", status), ("Kind", kind), ("Time", time)):
+        r[H.index(n)] = v
+    return r
+
+
+WCFG = {"start": "2026-11-09", "opening": {"Thuy": 80000, "Linh": 0}, "bonus": {"Thuy": 500000},
+        "bonus_settled": {"Thuy": ["2026-11"]}, "names": {"Thuy": "Chị Thuý", "Linh": "Chị Linh"}}
+WROWS = [
+    _wrow("old", "2026-11-07", APT, "Q7-B6.12A", "Thuy", 240000),                         # before start: settled
+    _wrow("a", "2026-11-09", "Lavida B1.1709", "Lavida B1.1709 (2PN)", "Thuy", 180000),
+    _wrow("b", "46335", "Sunrise B20.10", "Q7-B20.10", "Thuy", 80000),                      # serial date = Nov 9
+    _wrow("c", "2026-11-10", "Sunrise B14.20", "Q7-B14.20", "Thuy", 80000, kind="STAYOVER", time="10:00"),
+    _wrow("d", "2026-11-14", "PHK", "Q2-2PN", "Thuy", 180000, status="CANCELLED"),
+    _wrow("e", "2026-11-15", APT, "Q7-B6.12A", "Thuy", 80000, status="PLANNED"),            # Sunday, still PLANNED
+    _wrow("f", "2026-11-09", "Rivergate B9.20", "B9.20", "Linh", 135000),
+    _wrow("g", "2026-11-17", "Rivergate B9.20", "B9.20", "Linh", 135000, status="PLANNED"),  # next week
+    _wrow("h", "2026-11-18", "Sunrise B14.20", "Q7-B14.20", "Thuy", 80000, status="PLANNED"),
+    _wrow("i", "2026-11-19", "PHK", "Q2-1PN", "Thuy", 120000, status="PLANNED"),             # PHK left out of schedule
+]
+
+
+def test_weekly_pay_totals_and_carry():
+    from cleaning_sync import weekly
+    s = weekly.pay_summary(WROWS, [], "Thuy", dt.date(2026, 11, 15), WCFG)
+    assert s["week_total"] == 180000 + 80000 + 80000 + 80000      # cancelled PHK out, PLANNED Sunday in
+    assert s["owed"] == 80000 + 420000 and s["carry"] == 80000
+    s2 = weekly.pay_summary(WROWS, [["2026-11-16", "Thuy", "500000", "Don nha tuan 2 T11"]], "Thuy",
+                            dt.date(2026, 11, 22), WCFG)
+    assert s2["owed"] == 80000 + 420000 + 80000 + 120000 - 500000
+    assert weekly.pay_summary(WROWS, [], "Linh", dt.date(2026, 11, 15), WCFG)["owed"] == 135000
+
+
+def test_weekly_bonus_last_sunday_only_unsettled_months():
+    from cleaning_sync import weekly
+    assert weekly.last_sunday_of_month(dt.date(2026, 11, 29)) and not weekly.last_sunday_of_month(dt.date(2026, 11, 22))
+    assert weekly.pay_summary(WROWS, [], "Thuy", dt.date(2026, 11, 29), WCFG)["bonus_now"] == 0   # Nov settled
+    dec = weekly.pay_summary(WROWS, [], "Thuy", dt.date(2026, 12, 27), WCFG)
+    assert dec["bonus_now"] == 500000
+    assert any("Thưởng tháng 12: 500.000đ" in l for l in weekly.pay_message(dec, WCFG))
+
+
+def test_weekly_messages_format():
+    from cleaning_sync import weekly
+    s = weekly.pay_summary(WROWS, [], "Thuy", dt.date(2026, 11, 15), WCFG)
+    msg = weekly.pay_message(s, WCFG)
+    assert msg[0] == "Chị Thuý ơi, e gửi tiền dọn nhà tuần 09/11 - 15/11 ạ:"
+    assert "T2 09/11: Lavida B1.1709 (2PN) 180.000đ, Q7-B20.10 80.000đ" in msg
+    assert "T3 10/11: Q7-B14.20 - 10:00 - dọn lưu 80.000đ" in msg
+    assert "Các tuần trước còn: 80.000đ" in msg and "Tổng: 500.000đ" in msg
+    assert msg[-1] == "Nội dung CK: Don nha tuan 2 T11"
+    sched = weekly.schedule_message(WROWS, "Thuy", dt.date(2026, 11, 16), WCFG)
+    assert sched[2:] == ["T4 18/11: Q7-B14.20"]                      # PHK excluded
+    assert weekly.week_memo(dt.date(2026, 11, 2)) == "Don nha tuan 1 T11"
+
+
+def test_weekly_build_copy_ranges_match():
+    from cleaning_sync import weekly
+    res = weekly.build(WROWS, [], dt.date(2026, 11, 15), WCFG, "t")
+    rows = res["rows"]
+    for i, r in enumerate(rows):
+        if r and r[0].startswith("▼"):
+            rng = r[0].split("copy ")[1]
+            a, b = (int(x[1:]) for x in rng.split(":"))
+            assert a == i + 2 and rows[a - 1][0] and rows[b - 1][0] and (b == len(rows) or not rows[b])
+    assert res["ready_line"] == "SUNDAY_MESSAGES_READY: Thuy 500,000, Linh 135,000"

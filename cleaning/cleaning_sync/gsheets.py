@@ -156,6 +156,31 @@ class GoogleSheetsClient:
                 spreadsheetId=self.sid,
                 body={"ranges": [f"{self.tab}!A{i + 2}:{LAST}{i + 2}" for i in indices]}).execute()
 
+    # ------------------------------------------------------------------ other tabs
+    def read_tab(self, tab: str, cols: str = "A2:D") -> list:
+        """Data rows of another tab (read only). Missing tab -> []."""
+        try:
+            res = self.svc.spreadsheets().values().get(
+                spreadsheetId=self.sid, range=f"{tab}!{cols}", valueRenderOption="UNFORMATTED_VALUE",
+                dateTimeRenderOption="SERIAL_NUMBER").execute()
+        except Exception as e:  # noqa: BLE001
+            if "Unable to parse range" in str(e):
+                return []
+            raise
+        return [[_s(v) for v in r] for r in res.get("values", [])]
+
+    def ensure_tab(self, tab: str, header: list):
+        """Create the tab with a header row if it does not exist. Never touches an existing tab."""
+        self._guard()
+        meta = self.svc.spreadsheets().get(spreadsheetId=self.sid, fields="sheets.properties.title").execute()
+        if tab in {s["properties"]["title"] for s in meta.get("sheets", [])}:
+            return False
+        self.svc.spreadsheets().batchUpdate(
+            spreadsheetId=self.sid, body={"requests": [{"addSheet": {"properties": {"title": tab}}}]}).execute()
+        self.svc.spreadsheets().values().update(
+            spreadsheetId=self.sid, range=f"{tab}!A1", valueInputOption="RAW", body={"values": [header]}).execute()
+        return True
+
     # ------------------------------------------------------------------ mismatch report tab
     def write_report(self, rows, tab: str = "mismatch_report"):
         """Replace the contents of the report tab (created if missing). Same allow-list/production guard as tasks.
