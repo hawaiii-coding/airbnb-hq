@@ -13,6 +13,14 @@ import argparse
 import datetime as dt
 import json
 import os
+import sys
+from zoneinfo import ZoneInfo
+
+HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
+
+
+def now_hcmc() -> dt.datetime:
+    return dt.datetime.now(HCMC).replace(tzinfo=None)
 
 from . import gcs, gsheets, poller, writer
 from .ledger import LedgerReader
@@ -43,7 +51,7 @@ def resolved_ids(commit_report) -> set:
 def plan_report_rows(report) -> list:
     led = report.get("ledger") or {}
     head = [["Tier", "Op", "Date", "Apartment", "Key", "Detail"],
-            ["Generated", report["today"], dt.datetime.now().strftime("%Y-%m-%d %H:%M UTC"), f"mode {report['mode']}",
+            ["Generated", report["today"], now_hcmc().strftime("%Y-%m-%d %H:%M HCMC"), f"mode {report['mode']}",
              f"feeds failed: {len(report['feeds_failed'])}",
              f"ledger usable: {led.get('usable')} ({led.get('codes')} codes, latest {led.get('latest_import')})"]]
     head += [["FEED_FAILED", f["feed"], "", f["apt"], "", f["error"]] for f in report["feeds_failed"]]
@@ -123,7 +131,7 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
     ledger = None
     lid = env.get("LEDGER_SPREADSHEET_ID", "")
     if lid:   # optional, read-only; absent = calendar-only behaviour as before
-        ledger = LedgerReader(lid, service or gsheets.build_service()).read(now=dt.datetime.utcnow())
+        ledger = LedgerReader(lid, service or gsheets.build_service()).read(now=dt.datetime.now(dt.timezone.utc).replace(tzinfo=None))
     res = plan(tasks, polled["bookings"], RateCard.load(args.rate_card), today, horizon,
                miss_counts=state.get("miss_counts"), covered_apts=polled["covered_apts"], grace_polls=args.grace_polls,
                ledger=ledger)
@@ -137,7 +145,7 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
         approved |= set(filter(None, (args.approved_ids or "").split(",")))
         report["commit"] = writer.commit(client, res["ops"], approved, today, dry_run=False)
     applied = resolved_ids(report.get("commit"))
-    mrows = mismatch_report(res["ops"], applied, dt.datetime.now())
+    mrows = mismatch_report(res["ops"], applied, now_hcmc())
     report["mismatch_report"] = {"issues": len(mrows) - 2}
     pid = env.get("PLAN_REPORT_SPREADSHEET_ID", "")
     if args.mode == "plan" and pid:
@@ -155,8 +163,24 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
             report["mismatch_report"]["written"] = True
         except Exception as e:  # noqa: BLE001
             report["mismatch_report"]["error"] = f"{type(e).__name__}: {str(e)[:120]}"
-    state_store.save({"miss_counts": res["miss_counts"], "updated": dt.datetime.now().isoformat()})
+    state_store.save({"miss_counts": res["miss_counts"], "updated": now_hcmc().isoformat()})
     return report
+
+
+def alerts(report) -> list:
+    """Problems the owner must hear about. Printed to stderr as CLEANING_SYNC_ALERT lines, which Cloud Logging
+    records at ERROR severity; the Cloud Monitoring alert policy emails on those (and on crashes)."""
+    out = [f"feed {f['feed']} ({f['apt']}) failed: {f['error']}" for f in report.get("feeds_failed", [])]
+    led = report.get("ledger")
+    if led and not led.get("usable"):
+        out.append(f"earnings ledger unusable: {led.get('reason')}")
+    c = report.get("commit") or {}
+    if c.get("rolled_back") or c.get("error"):
+        out.append(f"write rolled back: {c.get('error')}")
+    for k in ("mismatch_report", "plan_report"):
+        if (report.get(k) or {}).get("error"):
+            out.append(f"{k} not written: {report[k]['error']}")
+    return out
 
 
 def main():
@@ -167,7 +191,10 @@ def main():
     ap.add_argument("--approved"); ap.add_argument("--approved-ids", help="comma-separated op ids from a plan report")
     ap.add_argument("--no-report", action="store_true", help="skip writing the mismatch_report tab")
     ap.add_argument("--rate-card", default=os.path.join(os.path.dirname(__file__), "..", "rate_card.json"))
-    print(json.dumps(run(ap.parse_args()), indent=1, default=str))
+    report = run(ap.parse_args())
+    print(json.dumps(report, indent=1, default=str))
+    for a in alerts(report):
+        print(f"CLEANING_SYNC_ALERT: {a}", file=sys.stderr)
 
 
 if __name__ == "__main__":
