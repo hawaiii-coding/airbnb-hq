@@ -30,6 +30,16 @@ def feeds_config_path(env) -> str:
     return env.get("FEEDS_CONFIG") or DEFAULT_FEEDS
 
 
+def resolved_ids(commit_report) -> set:
+    """Op ids the mismatch report should treat as done: mutations applied this run, plus ADDs skipped because the
+    row already exists (another run, e.g. a manual run overlapping the schedule, added it first)."""
+    if not commit_report:
+        return set()
+    done = {m["id"] for m in commit_report["mutations"]} if commit_report.get("applied") else set()
+    done |= {oid for oid, why in commit_report.get("skipped", []) if why.startswith("key already exists")}
+    return done
+
+
 def rows_to_tasks(rows):
     out = []
     for r in rows:
@@ -115,8 +125,7 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
         approved = set(json.load(open(args.approved))) if args.approved else set()
         approved |= set(filter(None, (args.approved_ids or "").split(",")))
         report["commit"] = writer.commit(client, res["ops"], approved, today, dry_run=False)
-    applied = ({m["id"] for m in report["commit"]["mutations"]}
-               if report.get("commit", {}).get("applied") else set())
+    applied = resolved_ids(report.get("commit"))
     mrows = mismatch_report(res["ops"], applied, dt.datetime.now())
     report["mismatch_report"] = {"issues": len(mrows) - 2}
     if args.mode == "apply" and not getattr(args, "no_report", False):

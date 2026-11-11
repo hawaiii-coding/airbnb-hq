@@ -266,3 +266,18 @@ def test_feeds_config_defaults_to_shipped_mapping():
     feeds = poller.load_feeds(p)["feeds"]
     assert len(feeds) == 11 and all("url" not in f for f in feeds)
     assert job.feeds_config_path({"FEEDS_CONFIG": "/x.json"}) == "/x.json"
+
+
+def test_report_drops_adds_another_run_already_wrote():
+    from cleaning_sync import job
+    from cleaning_sync.planner import mismatch_report
+    b = Booking("HMKKKK1234", APT, dt.date(2026, 12, 10), dt.date(2026, 12, 14), "RESERVED")
+    ops = run_plan([], [b])["ops"]
+    add = ops_of({"ops": ops}, "ADD")[0]
+    existing = [""] * len(H)
+    existing[0] = add["key"]
+    sheet = FakeSheet([existing])                       # the overlapping run already added it
+    rep = writer.commit(sheet, ops, (), TODAY, dry_run=False)
+    assert not rep["applied"] and rep["skipped"]
+    rows = mismatch_report(ops, job.resolved_ids(rep), dt.datetime(2026, 11, 11))
+    assert "Booking without clean" not in {r[1] for r in rows[2:]}
