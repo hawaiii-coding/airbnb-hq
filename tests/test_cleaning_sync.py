@@ -258,3 +258,11 @@ def test_alias_type_label_tidied_to_rate_card():
     writer.commit(sheet, res["ops"], (), TODAY, dry_run=False)
     assert sheet.rows[0][H.index("Type")] == "Studio"
     assert sheet.rows[0][H.index("Fee VND")] == "80000"
+
+
+def test_feeds_config_defaults_to_shipped_mapping():
+    from cleaning_sync import job
+    p = job.feeds_config_path({})
+    feeds = poller.load_feeds(p)["feeds"]
+    assert len(feeds) == 11 and all("url" not in f for f in feeds)
+    assert job.feeds_config_path({"FEEDS_CONFIG": "/x.json"}) == "/x.json"

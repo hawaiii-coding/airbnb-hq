@@ -21,6 +21,15 @@ from .planner import RateCard, Task, mismatch_report, parse_date, plan
 DEFAULT_HORIZON_DAYS = 45
 
 
+DEFAULT_FEEDS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "feeds.example.json")
+
+
+def feeds_config_path(env) -> str:
+    """FEEDS_CONFIG if set, else the feeds.example.json shipped in the image (feed -> apartment mapping only;
+    URLs come from the ICAL_URL_* secrets)."""
+    return env.get("FEEDS_CONFIG") or DEFAULT_FEEDS
+
+
 def rows_to_tasks(rows):
     out = []
     for r in rows:
@@ -88,7 +97,7 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
         backup_sink=backup_sink)
     rows = client.read_rows()
     tasks = rows_to_tasks(rows)
-    polled = poller.poll(poller.load_feeds(env["FEEDS_CONFIG"]), fetch=fetch, env=env)
+    polled = poller.poll(poller.load_feeds(feeds_config_path(env)), fetch=fetch, env=env)
     state = state_store.load()
     ledger = None
     lid = env.get("LEDGER_SPREADSHEET_ID", "")
