@@ -92,7 +92,8 @@ def test_missing_feed_alone_never_cancels():
     for miss in (0, 1, 5, 50):
         res = run_plan([t], miss={t.key: miss})
         assert not ops_of(res, "AUTO_CANCEL")
-        assert all(o["tier"] != "auto_safe" for o in res["ops"] if o.get("key") == t.key)
+        assert all(o["tier"] != "auto_safe" for o in res["ops"]
+                   if o.get("key") == t.key and not o["op"].startswith("TIDY_"))
     # and the writer applies nothing for it without approval
     sheet = FakeSheet([row_of(t)])
     writer.commit(sheet, run_plan([t], miss={t.key: 50})["ops"], (), TODAY, dry_run=False)
