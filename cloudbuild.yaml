@@ -3,7 +3,7 @@
 substitutions:
   _REGION: asia-southeast1
   _SA: airbnb-worker@airbnb-business-hq.iam.gserviceaccount.com
-  _SPREADSHEET_ID: 1xRriQVJtmgHWQYPisTka2xRFjt4v-UL3ast3vdI-2go   # scratch copy; change in the trigger for production
+  _SPREADSHEET_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI   # PRODUCTION Master Financial Tracker (scratch test passed 2026-11-11)
   _IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/live-availability
 
 steps:
