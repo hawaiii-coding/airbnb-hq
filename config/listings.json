@@ -1,0 +1,18 @@
+{
+  "_note": "Listing IDs are public. Feed URLs carry private tokens and live ONLY in Secret Manager as env ICAL_URL_<key>.",
+  "listings": [
+    {"key": "B928",       "listing_id": "1578330953362629351", "apartment": "Sunrise B9.28",   "config": "studio"},
+    {"key": "B612A",      "listing_id": "1808721256837665510", "apartment": "Sunrise B6.12A",  "config": "studio"},
+    {"key": "B2010",      "listing_id": "1771709052565351503", "apartment": "Sunrise B20.10",  "config": "studio"},
+    {"key": "B1420",      "listing_id": "1636155110861824940", "apartment": "Sunrise B14.20",  "config": "studio"},
+    {"key": "B1412A",     "listing_id": "1649980026693181990", "apartment": "Sunrise B14.12a", "config": "studio"},
+    {"key": "B1805_2BR",  "listing_id": "1659281608158753366", "apartment": "Sunrise B18.05",  "config": "2BR"},
+    {"key": "B1805_1BR",  "listing_id": "1659291879715312652", "apartment": "Sunrise B18.05",  "config": "1BR"},
+    {"key": "RVG_B920",   "listing_id": "1631952285608225276", "apartment": "Rivergate B9.20", "config": "studio"},
+    {"key": "LV_1319",    "listing_id": "1802950168698107766", "apartment": "Lavida B1.1319",  "config": "studio"},
+    {"key": "LV_1709_2BR","listing_id": "1775139343742313704", "apartment": "Lavida B1.1709",  "config": "2BR"},
+    {"key": "LV_1709_1BR","listing_id": "1775373979319377508", "apartment": "Lavida B1.1709",  "config": "1BR"},
+    {"key": "UNKNOWN_A",  "listing_id": "1619696085583310279", "apartment": "UNCONFIRMED (PHK?)", "config": "unknown"},
+    {"key": "UNKNOWN_B",  "listing_id": "1615861247350273391", "apartment": "UNCONFIRMED (PHK?)", "config": "unknown"}
+  ]
+}
