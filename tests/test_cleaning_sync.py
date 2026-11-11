@@ -281,3 +281,22 @@ def test_report_drops_adds_another_run_already_wrote():
     assert not rep["applied"] and rep["skipped"]
     rows = mismatch_report(ops, job.resolved_ids(rep), dt.datetime(2026, 11, 11))
     assert "Booking without clean" not in {r[1] for r in rows[2:]}
+
+
+def test_cloudbuild_prod_secrets_cover_every_feed():
+    import json, yaml
+    root = os.path.join(os.path.dirname(__file__), "..")
+    cb = yaml.safe_load(open(os.path.join(root, "cloudbuild.yaml")))
+    got = set(cb["substitutions"]["_CLEAN_SECRETS"].split(","))
+    feeds = json.load(open(os.path.join(root, "cleaning", "feeds.example.json")))["feeds"]
+    assert got == {f"{f['url_env']}=ical-url-{f['feed']}:latest" for f in feeds}
+    assert cb["substitutions"]["_CLEAN_SCRATCH_SHEET"] != cb["substitutions"]["_CLEAN_PROD_SHEET"]
+
+
+def test_plan_report_rows_shape():
+    from cleaning_sync import job
+    rep = {"today": "2026-11-11", "mode": "plan", "feeds_failed": [{"feed": "a8uo", "apt": APT, "error": "x"}],
+           "ledger": {"usable": True, "codes": 3, "latest_import": "t"},
+           "ops": [{"tier": "info", "op": "WATCH_MISSING", "date": "2026-11-20", "apt": APT, "key": "k", "detail": "d"}]}
+    rows = job.plan_report_rows(rep)
+    assert rows[2][0] == "FEED_FAILED" and rows[3][1] == "WATCH_MISSING" and all(len(r) == 6 for r in rows)
