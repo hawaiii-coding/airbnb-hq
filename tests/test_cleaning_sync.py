@@ -333,3 +333,18 @@ def test_tidy_display_only_bare_names():
     assert sheet.rows[0][H.index("Status")] == "PLANNED" and sheet.rows[0][H.index("Fee VND")] == "120000"
     t.display = "my own name"                                       # owner-typed display is never touched
     assert not ops_of(run_plan([t], [b], covered={apt}), "TIDY_DISPLAY")
+
+
+def test_alerts_flag_failures_only():
+    from cleaning_sync import job
+    ok = {"feeds_failed": [], "ledger": {"usable": True}, "commit": {"applied": True}, "mismatch_report": {"written": True}}
+    assert job.alerts(ok) == []
+    bad = {"feeds_failed": [{"feed": "a8uo", "apt": APT, "error": "boom"}], "ledger": {"usable": False, "reason": "stale"},
+           "commit": {"rolled_back": True, "error": "x"}, "mismatch_report": {"error": "y"}}
+    assert len(job.alerts(bad)) == 4
+
+
+def test_hcmc_time_is_utc_plus_7():
+    from cleaning_sync import job
+    diff = job.now_hcmc() - dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    assert abs(diff - dt.timedelta(hours=7)) < dt.timedelta(minutes=1)
