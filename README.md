@@ -19,3 +19,8 @@ Deploy (gcloud logged in):
 
 The worker service account needs Editor access on the target spreadsheet.
 PHK listings were dropped (owner, 2026-11-11). 11 feeds remain.
+
+## Auto-deploy (Cloud Build trigger)
+A merge to `main` runs tests, builds the image and redeploys the `live-availability` job (cloudbuild.yaml).
+Claude works on branches and opens pull requests; merging the PR is the approval to go live.
+The spreadsheet the job writes to is the trigger substitution `_SPREADSHEET_ID` (scratch copy until switched).
