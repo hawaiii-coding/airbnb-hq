@@ -22,6 +22,8 @@ import hashlib
 import json
 from typing import Iterable, Optional, Protocol
 
+from .planner import iso
+
 HEADER = ["Key", "Date", "Apartment", "Display", "Cleaner", "Type", "Kind", "Time", "Notes",
           "Same-day arrival", "Fee VND", "Status", "Confirmed at", "Paid at", "Last seen", "Source ID"]
 
@@ -32,8 +34,11 @@ ALLOWED_COLUMNS = {
     "MOVE_DATE": {"Date", "Source ID", "Notes"},
     "FEE_MISMATCH": {"Fee VND", "Notes"},
     "PROPOSE_CANCEL": {"Status", "Notes"},
+    "AUTO_CANCEL": {"Status", "Notes"},   # PLANNED -> CANCELLED only, when feed AND earnings ledger agree
+    "TIDY_TYPE": {"Type", "Notes"},
 }
-AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY"}
+AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY", "AUTO_CANCEL", "TIDY_TYPE"}
+MAX_AUTO_CANCELS = 3   # more than this in one run looks like a data problem, not real cancellations
 APPROVABLE_OPS = {"MOVE_DATE", "FEE_MISMATCH", "PROPOSE_CANCEL"}
 NEVER = {"Cleaner", "Confirmed at", "Paid at", "Key"}
 
@@ -79,6 +84,7 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
     """Returns (mutations, skipped). Each mutation: dict(kind, ...). Validates against current rows."""
     muts, skipped, adds = [], [], 0
     seen_keys = {r[0] for r in rows if r}
+    n_cancel = sum(1 for o in ops if o["op"] == "AUTO_CANCEL")
     for op in ops:
         oid = op_id(op)
         kind = op["op"]
@@ -102,7 +108,7 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
                 raise GuardError(f"plan wants more than {max_adds} new rows: refusing")
             note = f"SYNC {today.isoformat()}: new from feed ({r['verification']}); owner columns set from rate card"
             new = [""] * len(HEADER)
-            for name, val in (("Key", r["key"]), ("Date", r["date"]), ("Apartment", r["apt"]), ("Display", r["apt"]),
+            for name, val in (("Key", r["key"]), ("Date", iso(r["date"])), ("Apartment", r["apt"]), ("Display", r["apt"]),
                               ("Cleaner", r["cleaner"]), ("Type", r["config"]), ("Kind", "CHECKOUT"),
                               ("Notes", note), ("Same-day arrival", r.get("same_day", "")),
                               ("Fee VND", str(r["fee"])), ("Status", "PLANNED"),
@@ -119,7 +125,7 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
         cells: dict[str, str] = {}
         if kind == "ADOPT_CODE":
             cells["Source ID"] = f"AIRBNB|{op['code']}"
-            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today}: legacy row crosswalked to {op['code']}")
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: legacy row crosswalked to {op['code']}")
             cells["Last seen"] = today.isoformat()
         elif kind == "VERIFY":
             notes = row[_col("Notes")]
@@ -132,22 +138,37 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
             if row[_col("Status")] not in ("PLANNED",):
                 skipped.append((oid, f"status {row[_col('Status')]} is owner territory"))
                 continue
-            cells["Date"] = op["new_date"]
+            cells["Date"] = iso(op["new_date"])
             if op.get("code"):
                 cells["Source ID"] = f"AIRBNB|{op['code']}"
-            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today}: date {row[_col('Date')]} -> {op['new_date']} (owner approved)")
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: date {iso(row[_col('Date')])} -> {iso(op['new_date'])} (owner approved)")
         elif kind == "FEE_MISMATCH":
             if row[_col("Status")] not in ("PLANNED",):
                 skipped.append((oid, f"status {row[_col('Status')]}: fee on completed rows not changed"))
                 continue
             cells["Fee VND"] = str(op["proposed_fee"])
-            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today}: fee {row[_col('Fee VND')]} -> {op['proposed_fee']} (owner approved)")
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: fee {row[_col('Fee VND')]} -> {op['proposed_fee']} (owner approved)")
+        elif kind == "AUTO_CANCEL":
+            if n_cancel > MAX_AUTO_CANCELS:
+                skipped.append((oid, f"too many auto-cancels in one run ({n_cancel} > {MAX_AUTO_CANCELS}): left for owner"))
+                continue
+            if row[_col("Status")] != "PLANNED":
+                skipped.append((oid, f"status {row[_col('Status')]}: only PLANNED rows can be cancelled"))
+                continue
+            cells["Status"] = "CANCELLED"
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: auto-cancelled: {op['detail']}")
+        elif kind == "TIDY_TYPE":
+            if row[_col("Type")] == op["new_type"]:
+                skipped.append((oid, "already tidy"))
+                continue
+            cells["Type"] = op["new_type"]
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: Type {row[_col('Type')]} -> {op['new_type']} (rate card)")
         elif kind == "PROPOSE_CANCEL":
             if row[_col("Status")] != "PLANNED":
                 skipped.append((oid, f"status {row[_col('Status')]}: only PLANNED rows can be cancelled"))
                 continue
             cells["Status"] = "CANCELLED"
-            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today}: cancelled, booking gone from feed (owner approved)")
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: cancelled, booking gone from feed (owner approved)")
         bad = set(cells) - ALLOWED_COLUMNS[kind]
         if bad or set(cells) & NEVER:
             raise GuardError(f"{kind} tried to write forbidden columns {sorted(bad | (set(cells) & NEVER))}")

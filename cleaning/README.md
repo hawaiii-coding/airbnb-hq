@@ -9,3 +9,12 @@ Live job (2026-11-11): `cleaning-sync-scratch`, `--mode apply`, writes ONLY the 
 
 Before production: rebuild tests, pin requirements, add a Cloud Build trigger, then a separate production job gated by
 ALLOW_PRODUCTION_WRITES=true with owner approval.
+
+## 2026-11-11 upgrade (scratch only)
+- Tests rebuilt: `tests/test_cleaning_sync.py` (run `python -m pytest -q` from the repo root).
+- AUTO_CANCEL: PLANNED Airbnb rows only, when the booking is missing from the feed for 2 consecutive polls AND the
+  Upcoming earnings ledger marks it gone. One source alone never cancels. Failed feed or unusable ledger = no cancel.
+  Max 3 per run; the reason is written in Notes.
+- Horizon 45 days. Mismatch report rewritten to tab `mismatch_report` of the same (scratch) sheet on every apply run.
+- Data tidy: dates written as ISO text; alias Type labels (B9.28/B20.10 "1BR") changed to the rate-card label.
+- Cloud Build deploys `cleaning-sync-scratch` from `main` (image `cleaning-sync`).
