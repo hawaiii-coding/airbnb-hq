@@ -420,3 +420,11 @@ def test_weekly_build_copy_ranges_match():
             a, b = (int(x[1:]) for x in rng.split(":"))
             assert a == i + 2 and rows[a - 1][0] and rows[b - 1][0] and (b == len(rows) or not rows[b])
     assert res["ready_line"] == "SUNDAY_MESSAGES_READY: Thuy 500,000, Linh 135,000"
+
+
+
+def test_weekly_time_fraction_rendered():
+    from cleaning_sync import weekly
+    assert weekly.hhmm("0.4166666666666667") == "10:00" and weekly.hhmm("10:00") == "10:00" and weekly.hhmm("") == ""
+    r = _wrow("x", "2026-11-10", "Sunrise B14.20", "Q7-B14.20", "Thuy", 80000, kind="STAYOVER", time="0.4166666666666667")
+    assert weekly._label(r) == "Q7-B14.20 - 10:00 - dọn lưu"
