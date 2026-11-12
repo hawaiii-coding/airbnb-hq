@@ -57,11 +57,24 @@ def last_sunday_of_month(d: dt.date) -> bool:
     return d.weekday() == 6 and (d + dt.timedelta(days=7)).month != d.month
 
 
+def hhmm(v) -> str:
+    """Sheets returns a time cell as a day fraction (10:00 -> 0.41666...); text times pass through."""
+    s = str(v or "").strip()
+    try:
+        f = float(s)
+    except ValueError:
+        return s
+    if 0 <= f < 1:
+        m = round(f * 24 * 60)
+        return f"{m // 60:02d}:{m % 60:02d}"
+    return s
+
+
 def _label(r) -> str:
     disp = _g(r, "Display") or _g(r, "Apartment")
     kind = (_g(r, "Kind") or "").upper()
     if kind == "STAYOVER":
-        t = _g(r, "Time")
+        t = hhmm(_g(r, "Time"))
         return f"{disp} - {t} - dọn lưu" if t else f"{disp} - dọn lưu"
     if kind == "MAINTENANCE":
         return f"{disp} - dọn bảo trì"
@@ -77,7 +90,7 @@ def _tasks(rows, cleaner, start, end, exclude_phk=False):
             continue
         d = _date(_g(r, "Date"))
         if d and start <= d <= end:
-            out.append((d, _g(r, "Time") or "99", _label(r), _fee(_g(r, "Fee VND")), r))
+            out.append((d, hhmm(_g(r, "Time")) or "99", _label(r), _fee(_g(r, "Fee VND")), r))
     return sorted(out, key=lambda x: (x[0], x[1], x[2]))
 
 
