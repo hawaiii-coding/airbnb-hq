@@ -115,7 +115,28 @@ def make_sinks(env, gcs_client=None):
     return backup, state
 
 
+def run_weekly(args, service=None, env=os.environ, now=None):
+    """Sunday 18:00: payroll + schedule messages -> tab sunday_messages. Never writes the tasks tab."""
+    from . import weekly
+    now = now or now_hcmc()
+    cutoff = dt.date.fromisoformat(args.today) if args.today else now.date()
+    sid = env["SPREADSHEET_ID"]
+    client = gsheets.GoogleSheetsClient(
+        sid, service or gsheets.build_service(), allowed_ids=set(filter(None, env.get("WRITE_ALLOWED_IDS", "").split(","))),
+        allow_production=env.get("ALLOW_PRODUCTION_WRITES", "").lower() == "true")
+    cfg = json.load(open(args.payroll))
+    rows = client.read_rows()
+    client.ensure_tab("payments", weekly.PAYMENTS_HEADER)
+    payments = client.read_tab("payments")
+    res = weekly.build(rows, payments, cutoff, cfg, now.strftime("%Y-%m-%d %H:%M HCMC"))
+    client.write_report(res["rows"], tab="sunday_messages")
+    return {"mode": "weekly", "cutoff": cutoff.isoformat(), "ready_line": res["ready_line"],
+            "owed": {s["cleaner"]: s["owed"] for s in res["summaries"]}}
+
+
 def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
+    if args.mode == "weekly":
+        return run_weekly(args, service, env)
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
     horizon = today + dt.timedelta(days=args.horizon_days)
     sid = env["SPREADSHEET_ID"]
@@ -185,7 +206,8 @@ def alerts(report) -> list:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["plan", "apply"], default="plan")
+    ap.add_argument("--mode", choices=["plan", "apply", "weekly"], default="plan")
+    ap.add_argument("--payroll", default=os.path.join(os.path.dirname(__file__), "..", "payroll.json"))
     ap.add_argument("--today"); ap.add_argument("--horizon-days", type=int, default=DEFAULT_HORIZON_DAYS)
     ap.add_argument("--grace-polls", type=int, default=4)  # ~1-2h at a 15-30 min poll
     ap.add_argument("--approved"); ap.add_argument("--approved-ids", help="comma-separated op ids from a plan report")
@@ -193,6 +215,8 @@ def main():
     ap.add_argument("--rate-card", default=os.path.join(os.path.dirname(__file__), "..", "rate_card.json"))
     report = run(ap.parse_args())
     print(json.dumps(report, indent=1, default=str))
+    if report.get("ready_line"):
+        print(report["ready_line"])          # matched by the "Sunday messages ready" email policy
     for a in alerts(report):
         print(f"CLEANING_SYNC_ALERT: {a}", file=sys.stderr)
 

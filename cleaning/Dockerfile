@@ -4,6 +4,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY cleaning_sync ./cleaning_sync
-COPY feeds.example.json rate_card.json ./
+COPY feeds.example.json rate_card.json payroll.json ./
 ENV FEEDS_CONFIG=/app/feeds.example.json
 ENTRYPOINT ["python", "-m", "cleaning_sync.job"]

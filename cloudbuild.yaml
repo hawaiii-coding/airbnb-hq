@@ -78,5 +78,19 @@ steps:
         # one apply run right after deploy; mismatch_report tab on the production sheet shows what is left
         gcloud run jobs execute cleaning-sync-prod --region ${_REGION} --wait
 
+  # ---- Sunday payroll + schedule messages (owner 2026-11-12). Same image; writes ONLY tabs sunday_messages and
+  # (if missing) payments on the production Cleaning sheet. Triggered by Cloud Scheduler, Sunday 18:00 HCMC.
+  - id: deploy-cleaning-weekly
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run jobs deploy cleaning-weekly-prod --region ${_REGION} \
+          --image ${_CLEAN_IMAGE}:${SHORT_SHA} --service-account ${_SA} \
+          --max-retries 0 --task-timeout 120 \
+          --args=--mode=weekly \
+          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=${_CLEAN_PROD_SHEET},ALLOW_PRODUCTION_WRITES=true"
+
 options:
   logging: CLOUD_LOGGING_ONLY
