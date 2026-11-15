@@ -1,8 +1,8 @@
 {
-  "_comment": "Owner 2026-11-12. Everything paid up to the Nov 8 (Thuy) / Nov 9 (Linh) transfers except Thuy's B6.12A Trip.com clean of Nov 8 (80k). Thuy's November bonus was paid ~Nov 8. Bonus goes on the last Sunday of each month.",
+  "_comment": "Owner 2026-11-12/15. Everything paid up to the Nov 8 (Thuy) / Nov 9 (Linh) transfers, including Thuy's B6.12A Trip.com clean of Nov 8 (owner 2026-11-15: already paid). Thuy's November bonus was paid ~Nov 8. Bonus goes on the last Sunday of each month.",
   "start": "2026-11-09",
   "opening": {
-    "Thuy": 80000,
+    "Thuy": 0,
     "Linh": 0
   },
   "bonus": {
