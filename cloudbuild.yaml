@@ -7,7 +7,7 @@ substitutions:
   _IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/live-availability
   _CLEAN_PROD_SHEET: 1JNJjayasaaLYtUOIe_ukbkolcfsuo1BgnLsgne21T5Y   # PRODUCTION Cleaning Operations V2
   _CLEAN_SCRATCH_SHEET: 1GxwOXraRTghhRI_JQfwFkIkvnE-MwBF2bjE2wB47Cxo
-  _CLEAN_SECRETS: ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest   # must match cleaning/feeds.example.json (tested)
+  _CLEAN_SECRETS: ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest,ICAL_URL_B346=ical-url-b346:latest   # must match cleaning/feeds.example.json (tested)
   _LEDGER_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI
   _CLEAN_IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/cleaning-sync
 
