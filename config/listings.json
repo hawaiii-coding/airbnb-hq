@@ -77,6 +77,13 @@
       "apartment": "Lavida B1.1709",
       "config": "1BR",
       "secret": "ical-url-9j4q"
+    },
+    {
+      "key": "B3406_2BR",
+      "listing_id": "1821098595352124205",
+      "apartment": "Sunrise B34.06",
+      "config": "2BR",
+      "secret": "ical-url-b346"
     }
   ],
   "_dropped": "PHK B3.07 1BR (1619696085583310279) and 2BR (1615861247350273391): owner's home, hosting ended; dropped 2026-11-11 by owner"

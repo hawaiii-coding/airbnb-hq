@@ -77,6 +77,13 @@
    "config": "2BR",
    "url_env": "ICAL_URL_7VNP",
    "listing_id": "1775139343742313704"
+  },
+  {
+   "feed": "b346",
+   "apt": "Sunrise B34.06",
+   "config": "2BR",
+   "url_env": "ICAL_URL_B346",
+   "listing_id": "1821098595352124205"
   }
  ]
 }
