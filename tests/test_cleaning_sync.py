@@ -265,7 +265,7 @@ def test_feeds_config_defaults_to_shipped_mapping():
     from cleaning_sync import job
     p = job.feeds_config_path({})
     feeds = poller.load_feeds(p)["feeds"]
-    assert len(feeds) == 12 and all("url" not in f for f in feeds)
+    assert len(feeds) == 13 and all("url" not in f for f in feeds)
     assert job.feeds_config_path({"FEEDS_CONFIG": "/x.json"}) == "/x.json"
 
 
