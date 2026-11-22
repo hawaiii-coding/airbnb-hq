@@ -511,3 +511,41 @@ def test_single_secret_lookup_beats_old_env():
     assert seen == [url] and not res["failed"]
     res = poller.poll({"feeds": [{"feed": "new1", "apt": APT, "url_env": "ICAL_URL_NEW1"}]}, fetch=lambda u: ok, env={})
     assert res["failed"] and "add_ical_url.sh" in res["failed"][0]["error"]
+
+
+
+# ------------------------------------------------------------------ monthly cleaning -> tracker
+def test_monthly_cleaning_totals():
+    from cleaning_sync import tracker
+    rows = [_wrow("a", "2026-11-09", "Lavida B1.1709", "x", "Thuy", 180000),
+            _wrow("b", "46356", "Lavida B1.1709", "x", "Thuy", 120000, status="PLANNED"),      # Nov 30, planned
+            _wrow("c", "2026-11-14", "PHK", "x", "Thuy", 180000, status="CANCELLED"),
+            _wrow("d", "2026-12-01", "Lavida B1.1709", "x", "Thuy", 180000),
+            _wrow("e", "2026-11-20", "Rivergate B9.20", "x", "Linh", 135000)]
+    assert tracker.monthly_cleaning(rows, "2026-11") == {"Lavida B1.1709": 300000, "Rivergate B9.20": 135000}
+
+
+GRID = [["AIRBNB | EASY MONTHLY ENTRY"], [], ["Metric", "Sunrise B9.28", "Lavida B1.1709", "PHK"], [],
+        ["2026-10  |  MONTHLY ENTRY"], ["Net booking revenue", "1"], ["Cleaning", "870000", "1460000", ""],
+        [], ["2026-11  |  MONTHLY ENTRY"], ["Net booking revenue", "2"], ["Rent expense", "3"],
+        ["Cleaning", "240000", "180000"], ["Laundry"]]
+
+
+def test_tracker_locates_only_the_month_cleaning_row():
+    from cleaning_sync import tracker
+    ri, cells, unknown = tracker.plan_write(GRID, "2026-11", {"Lavida B1.1709": 1500000, "Ghost": 1})
+    assert ri == 11 and [c for c, _, _ in cells] == [1, 2, 3]
+    assert [n for _, _, n in cells] == [0, 1500000, 0] and unknown == ["Ghost"]
+    assert tracker.locate(GRID, "2026-10")[0] == 6
+
+
+def test_tracker_refuses_formula_cells_and_missing_month():
+    from cleaning_sync import tracker
+    g = [list(r) for r in GRID]
+    g[11] = ["Cleaning", "=SUM(X1:X2)", "180000"]
+    with pytest.raises(ValueError):
+        tracker.plan_write(g, "2026-11", {})
+    with pytest.raises(ValueError):
+        tracker.plan_write(GRID, "2027-01", {})
+    assert tracker.months_to_write(dt.date(2026, 12, 6)) == ["2026-11", "2026-12"]
+    assert tracker.months_to_write(dt.date(2026, 11, 22)) == ["2026-11"]

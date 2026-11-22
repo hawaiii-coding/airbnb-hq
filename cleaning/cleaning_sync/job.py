@@ -133,8 +133,21 @@ def run_weekly(args, service=None, env=os.environ, now=None):
     payments = client.read_tab("payments")
     res = weekly.build(rows, payments, cutoff, cfg, now.strftime("%Y-%m-%d %H:%M HCMC"))
     client.write_report(res["rows"], tab="sunday_messages")
-    return {"mode": "weekly", "cutoff": cutoff.isoformat(), "ready_line": res["ready_line"],
-            "owed": {s["cleaner"]: s["owed"] for s in res["summaries"]}}
+    out = {"mode": "weekly", "cutoff": cutoff.isoformat(), "ready_line": res["ready_line"],
+           "owed": {s["cleaner"]: s["owed"] for s in res["summaries"]}}
+    tid = env.get("TRACKER_SPREADSHEET_ID", "")
+    if tid and env.get("ALLOW_TRACKER_CLEANING_WRITE", "").lower() == "true":
+        from . import tracker
+        out["tracker_cleaning"] = []
+        for month in tracker.months_to_write(cutoff):
+            try:   # tracker write never blocks the Sunday messages
+                out["tracker_cleaning"].append(
+                    tracker.write_month(service or gsheets.build_service(), tid, month,
+                                        tracker.monthly_cleaning(rows, month)))
+            except Exception as e:  # noqa: BLE001
+                out["tracker_cleaning"].append({"month": month, "error": f"{type(e).__name__}: {str(e)[:150]}"})
+                out["mismatch_report"] = {"error": f"tracker cleaning {month}: {type(e).__name__}"}
+    return out
 
 
 def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
