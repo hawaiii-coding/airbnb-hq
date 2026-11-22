@@ -4,10 +4,11 @@ Key rules (BUSINESS_RULES 4-5, handoff 2026-11-11):
   * a booking missing from the feed never cancels on its own
   * a failed feed is never read as "all bookings cancelled"
   * owner columns (Cleaner, Fee VND, Status, Confirmed at, Paid at) are never overwritten by sync
-  * fees and cleaners come from rate_card.json
+  * fees and cleaners come from config/units.json
   * auto-cancel only when feed (2 consecutive polls) AND Upcoming earnings ledger both say gone
 """
 import datetime as dt
+import json
 import os
 import sys
 
@@ -20,7 +21,7 @@ from cleaning_sync.gsheets import GoogleSheetsClient, WriteNotAllowed  # noqa: E
 from cleaning_sync.ledger import LedgerEntry, LedgerView  # noqa: E402
 from cleaning_sync.planner import Booking, RateCard, Task, plan  # noqa: E402
 
-RC = RateCard.load(os.path.join(os.path.dirname(__file__), "..", "cleaning", "rate_card.json"))
+RC = RateCard.load(os.path.join(os.path.dirname(__file__), "..", "config", "units.json"))
 TODAY = dt.date(2026, 11, 11)
 HORIZON = TODAY + dt.timedelta(days=45)
 APT = "Sunrise B6.12A"
@@ -285,14 +286,15 @@ def test_report_drops_adds_another_run_already_wrote():
 
 
 def test_cloudbuild_prod_secrets_cover_every_feed():
-    import json, yaml
+    import yaml
     root = os.path.join(os.path.dirname(__file__), "..")
     cb = yaml.safe_load(open(os.path.join(root, "cloudbuild.yaml")))
     got = set(cb["substitutions"]["_CLEAN_SECRETS"].split(","))
-    feeds = json.load(open(os.path.join(root, "cleaning", "feeds.example.json")))["feeds"]
-    assert got == {f"{f['url_env']}=ical-url-{f['feed']}:latest" for f in feeds}
+    assert "ICAL_URLS=ical-urls:latest" in got                       # the one secret every unit needs
+    feeds = poller.load_feeds(os.path.join(root, "config", "units.json"))["feeds"]
+    fallback = {f"{f['url_env']}=ical-url-{f['feed']}:latest" for f in feeds}
+    assert got - {"ICAL_URLS=ical-urls:latest"} <= fallback             # fallback entries must be real feeds
     assert cb["substitutions"]["_CLEAN_SCRATCH_SHEET"] != cb["substitutions"]["_CLEAN_PROD_SHEET"]
-
 
 def test_plan_report_rows_shape():
     from cleaning_sync import job
@@ -443,14 +445,14 @@ def test_report_lists_date_moves_waiting_for_owner():
 
 
 def test_cloudbuild_live_secrets_cover_every_listing():
-    import json, yaml
+    import yaml
+    from hq.feeds import load_listings
     root = os.path.join(os.path.dirname(__file__), "..")
     cb = yaml.safe_load(open(os.path.join(root, "cloudbuild.yaml")))
     got = set(cb["substitutions"]["_LIVE_SECRETS"].split(","))
-    ls = json.load(open(os.path.join(root, "config", "listings.json")))["listings"]
-    assert got == {f"ICAL_URL_{l['key']}={l['secret']}:latest" for l in ls}
-
-
+    assert "ICAL_URLS=ical-urls:latest" in got
+    keys = {f"ICAL_URL_{l.key}=ical-url-{l.feed}:latest" for l in load_listings()}
+    assert got - {"ICAL_URLS=ical-urls:latest"} <= keys
 
 def test_auto_move_only_when_calendar_and_earnings_agree():
     t = task(date=dt.date(2026, 11, 24))
@@ -482,3 +484,30 @@ def test_early_checkout_surfaces_when_nights_rebooked():
     first = run_plan([t], [], led=led)
     assert ops_of(first, "LEDGER_ACTIVE") and not ops_of(first, "GONE_FROM_CALENDAR")
     assert ops_of(run_plan([t], [], led=led, miss={t.key: 3}), "GONE_FROM_CALENDAR")
+
+
+
+def test_units_json_is_the_single_source():
+    from hq.feeds import load_listings
+    root = os.path.join(os.path.dirname(__file__), "..")
+    units = json.load(open(os.path.join(root, "config", "units.json")))
+    feeds = poller.load_feeds(os.path.join(root, "config", "units.json"))["feeds"]
+    live = load_listings()
+    assert {f["feed"] for f in feeds} == {l.feed for l in live}            # both jobs poll the same calendars
+    assert len({f["feed"] for f in feeds}) == len(feeds)                    # feed ids are unique
+    for apt, a in units["apartments"].items():                              # every polled unit has a cleaner + fee
+        if a["listings"]:
+            assert a["cleaner"] and all(RC.fee(apt, l["config"]) for l in a["listings"]), apt
+    assert not os.path.exists(os.path.join(root, "config", "listings.json"))
+
+
+def test_single_secret_lookup_beats_old_env():
+    import json as _j
+    url = "https://www.airbnb.com/calendar/ical/1.ics?s=x"
+    ok = "BEGIN:VCALENDAR\nEND:VCALENDAR"
+    seen = []
+    res = poller.poll({"feeds": [{"feed": "a8uo", "apt": APT, "url_env": "ICAL_URL_A8UO"}]},
+                      fetch=lambda u: seen.append(u) or ok, env={"ICAL_URLS": _j.dumps({"a8uo": url}), "ICAL_URL_A8UO": "old"})
+    assert seen == [url] and not res["failed"]
+    res = poller.poll({"feeds": [{"feed": "new1", "apt": APT, "url_env": "ICAL_URL_NEW1"}]}, fetch=lambda u: ok, env={})
+    assert res["failed"] and "add_ical_url.sh" in res["failed"][0]["error"]

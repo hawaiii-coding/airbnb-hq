@@ -39,7 +39,8 @@ def render(result, today, horizon):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", required=True); ap.add_argument("--bookings", required=True)
-    ap.add_argument("--rate-card", default=os.path.join(HERE, "..", "rate_card.json"))
+    ap.add_argument("--rate-card", default=next((p for p in (os.path.join(HERE, "..", "units.json"),
+                    os.path.join(HERE, "..", "..", "config", "units.json")) if os.path.exists(p)), "units.json"))
     ap.add_argument("--today", default=dt.date.today().isoformat()); ap.add_argument("--horizon", default=None)
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()

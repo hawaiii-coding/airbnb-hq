@@ -16,7 +16,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 CODE_RE = re.compile(r"\b(HM[A-Z0-9]{8})\b")
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "listings.json"
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "units.json"
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ class Listing:
     listing_id: str
     apartment: str
     config: str
+    feed: str = ""          # id in the ical-urls secret
 
 
 @dataclass
@@ -45,8 +46,8 @@ class FeedResult:
 
 def load_listings(path: Path = CONFIG_PATH) -> list[Listing]:
     data = json.loads(path.read_text())
-    return [Listing(**{k: d[k] for k in ("key", "listing_id", "apartment", "config")})
-            for d in data["listings"]]
+    return [Listing(l["key"], l["listing_id"], apt, l["live_config"], l["feed"])
+            for apt, a in data["apartments"].items() for l in a.get("listings", [])]
 
 
 def _unfold(text: str) -> list[str]:
@@ -88,7 +89,11 @@ def parse_ics(text: str) -> list[Event]:
 
 
 def fetch_feed(listing: Listing, timeout: int = 30) -> FeedResult:
-    url = os.environ.get(f"ICAL_URL_{listing.key}")
+    try:
+        urls = json.loads(os.environ.get("ICAL_URLS", "") or "{}")
+    except ValueError:
+        urls = {}
+    url = urls.get(listing.feed) or os.environ.get(f"ICAL_URL_{listing.key}")   # single secret first, old env fallback
     if not url:
         return FeedResult(listing, False, error="no feed URL configured")
     try:
