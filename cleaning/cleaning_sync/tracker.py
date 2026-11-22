@@ -2,7 +2,12 @@
 
 Target: tab 'Easy Monthly Entry', block "<YYYY-MM>  |  MONTHLY ENTRY", row "Cleaning", one column per apartment
 (header row = the row whose column A is "Metric"). Value = sum of Fee VND of every non-cancelled task of that apartment
-dated in that month (accrual: cleans still PLANNED later in the month are included).
+whose COST MONTH is that month (accrual: cleans still PLANNED later in the month are included).
+
+Cost month (owner 2026-11-22): a clean belongs to the month of the stay it serves. A CHECKOUT clean serves the stay's
+last night, which is the day before the clean, so a Dec 1 checkout clean is a November cost. Stay-over, maintenance and
+other cleans use their own date. Checkout cleans dated before STAY_MONTH_FROM keep their own date (October was entered
+by hand, so moving Nov 1 cleans back to October would drop them from both months).
 
 Safety:
   * writes only when TRACKER_SPREADSHEET_ID is set and ALLOW_TRACKER_CLEANING_WRITE=true
@@ -18,10 +23,18 @@ from .planner import parse_date
 from .writer import HEADER
 
 TAB = "Easy Monthly Entry"
+STAY_MONTH_FROM = dt.date(2026, 11, 2)
+
+
+def cost_month(date: dt.date, kind: str) -> str:
+    """'YYYY-MM' the clean's cost belongs to: the stay's last night for checkout cleans (see module doc)."""
+    if (kind or "").strip().upper() == "CHECKOUT" and date >= STAY_MONTH_FROM:
+        date = date - dt.timedelta(days=1)
+    return f"{date:%Y-%m}"
 
 
 def monthly_cleaning(rows, month: str) -> dict:
-    """{apartment: total fee} for non-cancelled tasks dated in month 'YYYY-MM'."""
+    """{apartment: total fee} for non-cancelled tasks whose cost month (cost_month) is 'YYYY-MM'."""
     out: dict = {}
     for r in rows:
         if not r or not r[0]:
@@ -34,7 +47,7 @@ def monthly_cleaning(rows, month: str) -> dict:
             fee = int(float(g("Fee VND")))
         except (ValueError, TypeError):
             continue
-        if f"{d:%Y-%m}" == month:
+        if cost_month(d, g("Kind")) == month:
             out[g("Apartment")] = out.get(g("Apartment"), 0) + fee
     return out
 

@@ -522,7 +522,22 @@ def test_monthly_cleaning_totals():
             _wrow("c", "2026-11-14", "PHK", "x", "Thuy", 180000, status="CANCELLED"),
             _wrow("d", "2026-12-01", "Lavida B1.1709", "x", "Thuy", 180000),
             _wrow("e", "2026-11-20", "Rivergate B9.20", "x", "Linh", 135000)]
-    assert tracker.monthly_cleaning(rows, "2026-11") == {"Lavida B1.1709": 300000, "Rivergate B9.20": 135000}
+    # d: Dec 1 checkout serves the Nov 30 night -> November (owner 2026-11-22)
+    assert tracker.monthly_cleaning(rows, "2026-11") == {"Lavida B1.1709": 480000, "Rivergate B9.20": 135000}
+
+
+def test_cost_month_rule():
+    from cleaning_sync import tracker
+    D = dt.date
+    assert tracker.cost_month(D(2026, 12, 1), "CHECKOUT") == "2026-11"       # stay Nov 26 - Dec 1
+    assert tracker.cost_month(D(2026, 12, 2), "CHECKOUT") == "2026-12"
+    assert tracker.cost_month(D(2026, 12, 1), "STAY-OVER") == "2026-12"      # own date
+    assert tracker.cost_month(D(2026, 12, 1), "MAINTENANCE") == "2026-12"
+    assert tracker.cost_month(D(2026, 11, 1), "CHECKOUT") == "2026-11"       # before STAY_MONTH_FROM: own date
+    rows = [_wrow("a", "2026-12-01", "Sunrise B34.06", "x", "Thuy", 180000),
+            _wrow("b", "2026-12-01", "Sunrise B34.06", "x", "Thuy", 120000, kind="STAY-OVER")]
+    assert tracker.monthly_cleaning(rows, "2026-11") == {"Sunrise B34.06": 180000}
+    assert tracker.monthly_cleaning(rows, "2026-12") == {"Sunrise B34.06": 120000}
 
 
 GRID = [["AIRBNB | EASY MONTHLY ENTRY"], [], ["Metric", "Sunrise B9.28", "Lavida B1.1709", "PHK"], [],
