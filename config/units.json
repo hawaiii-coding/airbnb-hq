@@ -1,0 +1,226 @@
+{
+  "_comment": "ONE place for every unit (owner 2026-11-22). Cleaner, fees and display drive the cleaning sync and the Sunday messages; listings drive the calendar polling (cleaning sync + Live Availability). Calendar links are NOT here: they live in the Secret Manager secret `ical-urls` (JSON, keyed by `feed`). Add a unit: add it here (PR), then run scripts/add_ical_url.sh <feed> in Cloud Shell.",
+  "_comment_rates": "Owner rules 2026-11-09: cleaner is fixed per apartment; studios are 80,000 VND when Thuy cleans. Fee is per cleaning shift (maintenance cleans = N shifts).",
+  "_comment_display": "display = sheet/Zalo name (Q7- prefix = Sunrise only; Lavida keeps its name). Units with more than one bookable config (B1.1709, B18.05) get ' (1PN)'/' (2PN)' from the feed's config.",
+  "config_suffix": {
+    "1BR": "1PN",
+    "2BR": "2PN"
+  },
+  "apartments": {
+    "Sunrise B6.12A": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "display": "Q7-B6.12A",
+      "listings": [
+        {
+          "feed": "a8uo",
+          "key": "B612A",
+          "listing_id": "1808721256837665510",
+          "config": "Studio",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Sunrise B14.20": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "display": "Q7-B14.20",
+      "listings": [
+        {
+          "feed": "2ds9",
+          "key": "B1420",
+          "listing_id": "1636155110861824940",
+          "config": "Studio",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Sunrise B9.28": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
+      "aliases": {
+        "1BR": "Studio"
+      },
+      "display": "Q7-B9.28",
+      "listings": [
+        {
+          "feed": "lp0s",
+          "key": "B928",
+          "listing_id": "1578330953362629351",
+          "config": "Studio",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Sunrise B20.10": {
+      "cleaner": "Thuy",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 80000
+      },
+      "_note": "Studio at 80k, owner confirmed 2026-11-09 (sheet had 1BR/120k).",
+      "aliases": {
+        "1BR": "Studio"
+      },
+      "display": "Q7-B20.10",
+      "listings": [
+        {
+          "feed": "u4fi",
+          "key": "B2010",
+          "listing_id": "1771709052565351503",
+          "config": "Studio",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Lavida B1.1319": {
+      "cleaner": "Thuy",
+      "default_config": "2-bed studio",
+      "fees": {
+        "2-bed studio": 80000
+      },
+      "display": "Lavida B1.1319",
+      "listings": [
+        {
+          "feed": "d2hg",
+          "key": "LV_1319",
+          "listing_id": "1802950168698107766",
+          "config": "2-bed studio",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Lavida B1.1709": {
+      "cleaner": "Thuy",
+      "default_config": "2BR",
+      "fees": {
+        "2BR": 180000,
+        "1BR": 120000
+      },
+      "_note": "2BR 180k, 1BR 120k (owner confirmed 2026-11-09).",
+      "display": "Lavida B1.1709",
+      "listings": [
+        {
+          "feed": "7vnp",
+          "key": "LV_1709_2BR",
+          "listing_id": "1775139343742313704",
+          "config": "2BR",
+          "live_config": "2BR"
+        },
+        {
+          "feed": "9j4q",
+          "key": "LV_1709_1BR",
+          "listing_id": "1775373979319377508",
+          "config": "1BR",
+          "live_config": "1BR"
+        }
+      ]
+    },
+    "Sunrise B34.06": {
+      "cleaner": "Thuy",
+      "default_config": "2BR",
+      "fees": {
+        "2BR": 180000,
+        "1BR": 120000
+      },
+      "_note": "New unit, handover 2026-11-16. 2BR 2 bath, listed as 2BR + 1BR (owner 2026-11-15). Thuy standard 2BR/1BR rates. iCal feeds added once the listings exist.",
+      "display": "Q7-B34.06",
+      "listings": [
+        {
+          "feed": "b346",
+          "key": "B3406_2BR",
+          "listing_id": "1821098595352124205",
+          "config": "2BR",
+          "live_config": "2BR"
+        },
+        {
+          "feed": "b341",
+          "key": "B3406_1BR",
+          "listing_id": "1821902079256440333",
+          "config": "1BR",
+          "live_config": "1BR"
+        }
+      ]
+    },
+    "PHK": {
+      "cleaner": "Thuy",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 120000,
+        "2BR": 180000
+      },
+      "display": "Q2-PHK",
+      "listings": []
+    },
+    "Sunrise B18.05": {
+      "cleaner": "Linh",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 135000,
+        "2BR": 200000
+      },
+      "display": "Q7-B18.05",
+      "listings": [
+        {
+          "feed": "t7kk",
+          "key": "B1805_2BR",
+          "listing_id": "1659281608158753366",
+          "config": "2BR",
+          "live_config": "2BR"
+        },
+        {
+          "feed": "b7l2",
+          "key": "B1805_1BR",
+          "listing_id": "1659291879715312652",
+          "config": "1BR",
+          "live_config": "1BR"
+        }
+      ]
+    },
+    "Rivergate B9.20": {
+      "cleaner": "Linh",
+      "default_config": "1BR",
+      "fees": {
+        "1BR": 135000
+      },
+      "display": "B9.20",
+      "listings": [
+        {
+          "feed": "keqo",
+          "key": "RVG_B920",
+          "listing_id": "1631952285608225276",
+          "config": "1BR",
+          "live_config": "studio"
+        }
+      ]
+    },
+    "Sunrise B14.12a": {
+      "cleaner": "Linh",
+      "default_config": "Studio",
+      "fees": {
+        "Studio": 135000
+      },
+      "_note": "135k for Linh per Nov 9 payment (stay-over clean), owner confirmed.",
+      "display": "Q7-B14.12a",
+      "listings": [
+        {
+          "feed": "3n80",
+          "key": "B1412A",
+          "listing_id": "1649980026693181990",
+          "config": "Studio",
+          "live_config": "studio"
+        }
+      ]
+    }
+  }
+}

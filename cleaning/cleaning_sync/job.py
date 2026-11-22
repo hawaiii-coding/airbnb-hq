@@ -29,11 +29,14 @@ from .planner import RateCard, Task, mismatch_report, parse_date, plan
 DEFAULT_HORIZON_DAYS = 45
 
 
-DEFAULT_FEEDS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "feeds.example.json")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# config/units.json: shipped as /app/units.json in the image, at <repo>/config/units.json in a checkout
+DEFAULT_FEEDS = next((p for p in (os.path.join(_HERE, "..", "units.json"), os.path.join(_HERE, "..", "..", "config", "units.json"))
+                      if os.path.exists(p)), os.path.join(_HERE, "..", "units.json"))
 
 
 def feeds_config_path(env) -> str:
-    """FEEDS_CONFIG if set, else the feeds.example.json shipped in the image (feed -> apartment mapping only;
+    """FEEDS_CONFIG if set, else config/units.json (shipped in the image) (feed -> apartment mapping only;
     URLs come from the ICAL_URL_* secrets)."""
     return env.get("FEEDS_CONFIG") or DEFAULT_FEEDS
 
@@ -214,7 +217,7 @@ def main():
     ap.add_argument("--grace-polls", type=int, default=4)  # ~1-2h at a 15-30 min poll
     ap.add_argument("--approved"); ap.add_argument("--approved-ids", help="comma-separated op ids from a plan report")
     ap.add_argument("--no-report", action="store_true", help="skip writing the mismatch_report tab")
-    ap.add_argument("--rate-card", default=os.path.join(os.path.dirname(__file__), "..", "rate_card.json"))
+    ap.add_argument("--rate-card", default=DEFAULT_FEEDS)
     report = run(ap.parse_args())
     print(json.dumps(report, indent=1, default=str))
     if report.get("actions"):              # matched by the "Cleaning sync needs you" email policy

@@ -7,9 +7,9 @@ substitutions:
   _IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/live-availability
   _CLEAN_PROD_SHEET: 1JNJjayasaaLYtUOIe_ukbkolcfsuo1BgnLsgne21T5Y   # PRODUCTION Cleaning Operations V2
   _CLEAN_SCRATCH_SHEET: 1GxwOXraRTghhRI_JQfwFkIkvnE-MwBF2bjE2wB47Cxo
-  _CLEAN_SECRETS: ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest,ICAL_URL_B346=ical-url-b346:latest,ICAL_URL_B341=ical-url-b341:latest   # must match cleaning/feeds.example.json (tested)
+  _CLEAN_SECRETS: ICAL_URLS=ical-urls:latest,ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest,ICAL_URL_B346=ical-url-b346:latest,ICAL_URL_B341=ical-url-b341:latest   # ICAL_URLS = all links (new units need only that); the per-feed ones are a fallback, remove after 2026-11-29
   _LEDGER_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI
-  _LIVE_SECRETS: ICAL_URL_B928=ical-url-lp0s:latest,ICAL_URL_B612A=ical-url-a8uo:latest,ICAL_URL_B2010=ical-url-u4fi:latest,ICAL_URL_B1420=ical-url-2ds9:latest,ICAL_URL_B1412A=ical-url-3n80:latest,ICAL_URL_B1805_2BR=ical-url-t7kk:latest,ICAL_URL_B1805_1BR=ical-url-b7l2:latest,ICAL_URL_RVG_B920=ical-url-keqo:latest,ICAL_URL_LV_1319=ical-url-d2hg:latest,ICAL_URL_LV_1709_2BR=ical-url-7vnp:latest,ICAL_URL_LV_1709_1BR=ical-url-9j4q:latest,ICAL_URL_B3406_2BR=ical-url-b346:latest,ICAL_URL_B3406_1BR=ical-url-b341:latest   # must match config/listings.json (tested)
+  _LIVE_SECRETS: ICAL_URLS=ical-urls:latest,ICAL_URL_B928=ical-url-lp0s:latest,ICAL_URL_B612A=ical-url-a8uo:latest,ICAL_URL_B2010=ical-url-u4fi:latest,ICAL_URL_B1420=ical-url-2ds9:latest,ICAL_URL_B1412A=ical-url-3n80:latest,ICAL_URL_B1805_2BR=ical-url-t7kk:latest,ICAL_URL_B1805_1BR=ical-url-b7l2:latest,ICAL_URL_RVG_B920=ical-url-keqo:latest,ICAL_URL_LV_1319=ical-url-d2hg:latest,ICAL_URL_LV_1709_2BR=ical-url-7vnp:latest,ICAL_URL_LV_1709_1BR=ical-url-9j4q:latest,ICAL_URL_B3406_2BR=ical-url-b346:latest,ICAL_URL_B3406_1BR=ical-url-b341:latest   # same fallback note as _CLEAN_SECRETS
   _CLEAN_IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/cleaning-sync
 
 steps:
@@ -43,7 +43,7 @@ steps:
   # A production job is a separate, later change gated by ALLOW_PRODUCTION_WRITES=true and owner approval.
   - id: build-cleaning
     name: gcr.io/cloud-builders/docker
-    args: ["build", "-t", "${_CLEAN_IMAGE}:${SHORT_SHA}", "cleaning"]
+    args: ["build", "-t", "${_CLEAN_IMAGE}:${SHORT_SHA}", "-f", "cleaning/Dockerfile", "."]
     waitFor: ["test"]
 
   - id: push-cleaning

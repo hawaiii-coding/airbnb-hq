@@ -22,15 +22,24 @@ def default_fetch(url: str) -> str:  # pragma: no cover - network
     return r.text
 
 
+def ical_urls(env=os.environ) -> dict:
+    """All calendar links from the single secret ICAL_URLS (JSON {feed: url}); {} if unset or unreadable."""
+    try:
+        return json.loads(env.get("ICAL_URLS", "") or "{}")
+    except ValueError:
+        return {}
+
+
 def poll(feeds_config: dict, fetch: Optional[Callable[[str], str]] = None, env=os.environ):
     fetch = fetch or default_fetch
     bookings, failed, apts, bad_apts = [], [], set(), set()
+    urls = ical_urls(env)
     for fd in feeds_config["feeds"]:
         apts.add(fd["apt"])
         try:
-            url = env.get(fd["url_env"], "")
+            url = urls.get(fd["feed"]) or env.get(fd["url_env"], "")   # single secret first, old per-feed env as fallback
             if not url:
-                raise RuntimeError(f"env {fd['url_env']} not set")
+                raise RuntimeError(f"no calendar link for feed {fd['feed']} (add it with scripts/add_ical_url.sh)")
             text = fetch(url)
             if "BEGIN:VCALENDAR" not in text:
                 raise RuntimeError("response is not an iCalendar")
@@ -42,5 +51,11 @@ def poll(feeds_config: dict, fetch: Optional[Callable[[str], str]] = None, env=o
 
 
 def load_feeds(path: str) -> dict:
+    """Accepts config/units.json (preferred) or an old {"feeds": [...]} file."""
     with open(path) as f:
-        return json.load(f)
+        data = json.load(f)
+    if "apartments" not in data:
+        return data
+    return {"feeds": [{"feed": l["feed"], "apt": apt, "config": l["config"], "listing_id": l["listing_id"],
+                       "url_env": f"ICAL_URL_{l['feed'].upper()}"}
+                      for apt, a in data["apartments"].items() for l in a.get("listings", [])]}
