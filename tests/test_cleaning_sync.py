@@ -428,3 +428,14 @@ def test_weekly_time_fraction_rendered():
     assert weekly.hhmm("0.4166666666666667") == "10:00" and weekly.hhmm("10:00") == "10:00" and weekly.hhmm("") == ""
     r = _wrow("x", "2026-11-10", "Sunrise B14.20", "Q7-B14.20", "Thuy", 80000, kind="STAYOVER", time="0.4166666666666667")
     assert weekly._label(r) == "Q7-B14.20 - 10:00 - dọn lưu"
+
+
+
+def test_report_lists_date_moves_waiting_for_owner():
+    from cleaning_sync.planner import mismatch_report
+    t = task(date=dt.date(2026, 11, 24))
+    b = Booking(CODE, APT, dt.date(2026, 11, 20), dt.date(2026, 11, 25), "RESERVED")   # guest extended 1 night
+    res = run_plan([t], [b])
+    assert ops_of(res, "MOVE_DATE")
+    rows = mismatch_report(res["ops"], set(), dt.datetime(2026, 11, 22))
+    assert any(r[1] == "Date change: confirm" and r[4] == "MOVE_DATE" for r in rows[2:])

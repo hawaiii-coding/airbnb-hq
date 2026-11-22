@@ -416,7 +416,17 @@ REPORT_CATEGORIES = {
     "FEE_MISMATCH": "Fee vs rate card",
     "FEE_MISSING": "Fee vs rate card",
     "DUPLICATE_SAME_DATE": "Duplicate same-date clean",
+    # waiting for the owner: the sync saw it but will not change the sheet on its own (owner 2026-11-22)
+    "MOVE_DATE": "Date change: confirm",
+    "LEDGER_DATE_DIFF": "Date change: confirm",
+    "REVIVED_CODE": "Needs your decision",
+    "CLEANER_MISMATCH": "Needs your decision",
+    "LEDGER_LIVE_BUT_CANCELLED": "Needs your decision",
+    "UNCLASSIFIED_BLOCK": "Block without clean (Trip.com/direct?)",
+    "PAST_PLANNED": "Past clean still PLANNED",
 }
+ACTION_OPS = {"MOVE_DATE", "LEDGER_DATE_DIFF", "PROPOSE_CANCEL", "REVIVED_CODE", "CLEANER_MISMATCH",
+              "LEDGER_LIVE_BUT_CANCELLED", "UNCLASSIFIED_BLOCK"}
 REPORT_HEADER = ["Date", "Category", "Apartment", "Key", "Check", "Detail"]
 
 
