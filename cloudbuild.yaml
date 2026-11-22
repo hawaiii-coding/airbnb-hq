@@ -90,7 +90,7 @@ steps:
           --image ${_CLEAN_IMAGE}:${SHORT_SHA} --service-account ${_SA} \
           --max-retries 0 --task-timeout 120 \
           --args=--mode=weekly \
-          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=${_CLEAN_PROD_SHEET},ALLOW_PRODUCTION_WRITES=true"
+          --set-env-vars "SPREADSHEET_ID=${_CLEAN_PROD_SHEET},WRITE_ALLOWED_IDS=${_CLEAN_PROD_SHEET},ALLOW_PRODUCTION_WRITES=true,TRACKER_SPREADSHEET_ID=${_LEDGER_ID},ALLOW_TRACKER_CLEANING_WRITE=true"
 
 options:
   logging: CLOUD_LOGGING_ONLY
