@@ -234,8 +234,14 @@ def plan(
             for t in by_code[b.code]:
                 matched.add(t.key)
                 if t.status in ACTIVE and t.date != b.end:
-                    ops.append(_op("MOVE_DATE", "needs_owner", t,
-                                   f"{b.code}: task {t.date} but feed checkout is {b.end}", new_date=b.end.isoformat()))
+                    le = led.get(b.code) if led else None
+                    if t.status == "PLANNED" and le and le.live and le.end == b.end:
+                        ops.append(_op("AUTO_MOVE", "auto_safe", t,
+                                       f"{b.code}: checkout changed {t.date} -> {b.end}; calendar and Airbnb earnings agree",
+                                       new_date=b.end.isoformat()))
+                    else:
+                        ops.append(_op("MOVE_DATE", "needs_owner", t,
+                                       f"{b.code}: task {t.date} but feed checkout is {b.end}", new_date=b.end.isoformat()))
                 if t.unverified:
                     ops.append(_op("VERIFY", "auto_safe", t, f"{b.code} now present in feed; clear unverified mark"))
             continue
@@ -336,10 +342,23 @@ def plan(
             continue
         e = led.get(t.code) if led else None
         if e and (e.live or e.paid):
-            # Airbnb earnings still lists it: this is feed lag, not a cancellation. Miss count is not advanced.
-            ops.append(_op("LEDGER_ACTIVE", "info", t,
-                           f"{t.code} not in the feed but Airbnb earnings still lists it "
-                           f"({'upcoming' if e.live else 'paid'}); treated as lag, no change"))
+            # Earnings still lists it. Usually feed lag, but also what an early checkout looks like once the guest
+            # has left (owner 2026-11-22, HMFH9EJDYX). Never changes the sheet; reported when it persists or when
+            # another booking already holds the night before this checkout.
+            lag_n = miss_counts.get(t.key, 0) + 1
+            new_miss[t.key] = lag_n
+            night = t.date - dt.timedelta(days=1)
+            other = [r.code for r in reserved if r.apt == t.apt and r.code != t.code and r.start and r.start <= night < r.end]
+            if other or lag_n >= grace_polls:
+                why = (f"the night before ({night}) is booked by {other[0]}: guest likely left early or changed dates"
+                       if other else f"missing from the calendar for {lag_n} polls")
+                ops.append(_op("GONE_FROM_CALENDAR", "needs_owner", t,
+                               f"{t.code}: not in the calendar but Airbnb earnings still lists it; {why}. "
+                               f"Tell Claude the real checkout date"))
+            else:
+                ops.append(_op("LEDGER_ACTIVE", "info", t,
+                               f"{t.code} not in the feed but Airbnb earnings still lists it "
+                               f"({'upcoming' if e.live else 'paid'}); treated as lag, no change"))
             continue
         n = miss_counts.get(t.key, 0) + 1
         new_miss[t.key] = n
@@ -361,7 +380,7 @@ def plan(
 
     # ledger cross-checks: information only, never a write
     if led:
-        move_keys = {o["key"] for o in ops if o["op"] == "MOVE_DATE"}
+        move_keys = {o["key"] for o in ops if o["op"] in ("MOVE_DATE", "AUTO_MOVE")}
         any_task_codes = {t.code for t in tasks if t.code}
         feed_codes = {b.code for b in reserved}
         for t in active:
@@ -418,6 +437,8 @@ REPORT_CATEGORIES = {
     "DUPLICATE_SAME_DATE": "Duplicate same-date clean",
     # waiting for the owner: the sync saw it but will not change the sheet on its own (owner 2026-11-22)
     "MOVE_DATE": "Date change: confirm",
+    "AUTO_MOVE": "Date changed by sync (calendar + earnings agree)",
+    "GONE_FROM_CALENDAR": "Booking gone from calendar: check date",
     "LEDGER_DATE_DIFF": "Date change: confirm",
     "REVIVED_CODE": "Needs your decision",
     "CLEANER_MISMATCH": "Needs your decision",
@@ -425,7 +446,7 @@ REPORT_CATEGORIES = {
     "UNCLASSIFIED_BLOCK": "Block without clean (Trip.com/direct?)",
     "PAST_PLANNED": "Past clean still PLANNED",
 }
-ACTION_OPS = {"MOVE_DATE", "LEDGER_DATE_DIFF", "PROPOSE_CANCEL", "REVIVED_CODE", "CLEANER_MISMATCH",
+ACTION_OPS = {"GONE_FROM_CALENDAR", "MOVE_DATE", "LEDGER_DATE_DIFF", "PROPOSE_CANCEL", "REVIVED_CODE", "CLEANER_MISMATCH",
               "LEDGER_LIVE_BUT_CANCELLED", "UNCLASSIFIED_BLOCK"}
 REPORT_HEADER = ["Date", "Category", "Apartment", "Key", "Check", "Detail"]
 
@@ -441,11 +462,11 @@ def mismatch_report(ops, applied_ids, generated: dt.datetime, op_id=None):
         if not cat:
             continue
         applied = op_id(o) in applied_ids
-        if applied and o["op"] != "AUTO_CANCEL":
+        if applied and o["op"] not in ("AUTO_CANCEL", "AUTO_MOVE"):
             continue
-        if o["op"] == "AUTO_CANCEL" and not applied:
+        if o["op"] in ("AUTO_CANCEL", "AUTO_MOVE") and not applied:
             continue
-        check = "CANCELLED by sync" if o["op"] == "AUTO_CANCEL" else o["op"]
+        check = {"AUTO_CANCEL": "CANCELLED by sync", "AUTO_MOVE": "MOVED by sync"}.get(o["op"], o["op"])
         out.append([o["date"], cat, o["apt"], o.get("key") or "", check, o["detail"]])
     out.sort(key=lambda r: (r[1], r[0], r[2]))
     return [REPORT_HEADER, ["Generated", generated.strftime("%Y-%m-%d %H:%M"), f"{len(out)} issue(s)", "", "", ""]] + out

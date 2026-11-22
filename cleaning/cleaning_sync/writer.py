@@ -37,8 +37,10 @@ ALLOWED_COLUMNS = {
     "AUTO_CANCEL": {"Status", "Notes"},   # PLANNED -> CANCELLED only, when feed AND earnings ledger agree
     "TIDY_TYPE": {"Type", "Notes"},
     "TIDY_DISPLAY": {"Display"},
+    "AUTO_MOVE": {"Date", "Notes"},       # PLANNED only, when calendar AND earnings agree on the new checkout
 }
-AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY", "AUTO_CANCEL", "TIDY_TYPE", "TIDY_DISPLAY"}
+AUTO_OPS = {"ADD", "ADOPT_CODE", "VERIFY", "AUTO_CANCEL", "TIDY_TYPE", "TIDY_DISPLAY", "AUTO_MOVE"}
+MAX_AUTO_MOVES = 5
 MAX_AUTO_CANCELS = 3   # more than this in one run looks like a data problem, not real cancellations
 APPROVABLE_OPS = {"MOVE_DATE", "FEE_MISMATCH", "PROPOSE_CANCEL"}
 NEVER = {"Cleaner", "Confirmed at", "Paid at", "Key"}
@@ -85,7 +87,9 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
     """Returns (mutations, skipped). Each mutation: dict(kind, ...). Validates against current rows."""
     muts, skipped, adds = [], [], 0
     seen_keys = {r[0] for r in rows if r}
+    ops = list(ops)
     n_cancel = sum(1 for o in ops if o["op"] == "AUTO_CANCEL")
+    n_move = sum(1 for o in ops if o["op"] == "AUTO_MOVE")
     for op in ops:
         oid = op_id(op)
         kind = op["op"]
@@ -135,6 +139,16 @@ def build_mutations(ops: Iterable[dict], rows: list[list[str]], approved_ids: se
                 continue
             cells["Notes"] = notes.replace("QUICK-ADD unverified", "QUICK-ADD verified")
             cells["Last seen"] = today.isoformat()
+        elif kind == "AUTO_MOVE":
+            if n_move > MAX_AUTO_MOVES:
+                skipped.append((oid, f"too many auto-moves in one run ({n_move} > {MAX_AUTO_MOVES}): left for owner"))
+                continue
+            if row[_col("Status")] != "PLANNED":
+                skipped.append((oid, f"status {row[_col('Status')]}: only PLANNED rows are moved"))
+                continue
+            cells["Date"] = iso(op["new_date"])
+            cells["Notes"] = _note(row[_col("Notes")], f"SYNC {today.isoformat()}: date {iso(row[_col('Date')])} -> "
+                                                       f"{iso(op['new_date'])} (calendar + earnings agree)")
         elif kind == "MOVE_DATE":
             if row[_col("Status")] not in ("PLANNED",):
                 skipped.append((oid, f"status {row[_col('Status')]} is owner territory"))
