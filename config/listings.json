@@ -84,6 +84,13 @@
       "apartment": "Sunrise B34.06",
       "config": "2BR",
       "secret": "ical-url-b346"
+    },
+    {
+      "key": "B3406_1BR",
+      "listing_id": "1821902079256440333",
+      "apartment": "Sunrise B34.06",
+      "config": "1BR",
+      "secret": "ical-url-b341"
     }
   ],
   "_dropped": "PHK B3.07 1BR (1619696085583310279) and 2BR (1615861247350273391): owner's home, hosting ended; dropped 2026-11-11 by owner"
