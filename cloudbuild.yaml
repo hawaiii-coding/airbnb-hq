@@ -9,6 +9,7 @@ substitutions:
   _CLEAN_SCRATCH_SHEET: 1GxwOXraRTghhRI_JQfwFkIkvnE-MwBF2bjE2wB47Cxo
   _CLEAN_SECRETS: ICAL_URL_LP0S=ical-url-lp0s:latest,ICAL_URL_D2HG=ical-url-d2hg:latest,ICAL_URL_U4FI=ical-url-u4fi:latest,ICAL_URL_B7L2=ical-url-b7l2:latest,ICAL_URL_T7KK=ical-url-t7kk:latest,ICAL_URL_3N80=ical-url-3n80:latest,ICAL_URL_2DS9=ical-url-2ds9:latest,ICAL_URL_9J4Q=ical-url-9j4q:latest,ICAL_URL_KEQO=ical-url-keqo:latest,ICAL_URL_A8UO=ical-url-a8uo:latest,ICAL_URL_7VNP=ical-url-7vnp:latest,ICAL_URL_B346=ical-url-b346:latest,ICAL_URL_B341=ical-url-b341:latest   # must match cleaning/feeds.example.json (tested)
   _LEDGER_ID: 1nIutq0jZMyYqFat30jLigsz9_VyPlP5zaei9PgNDOPI
+  _LIVE_SECRETS: ICAL_URL_B928=ical-url-lp0s:latest,ICAL_URL_B612A=ical-url-a8uo:latest,ICAL_URL_B2010=ical-url-u4fi:latest,ICAL_URL_B1420=ical-url-2ds9:latest,ICAL_URL_B1412A=ical-url-3n80:latest,ICAL_URL_B1805_2BR=ical-url-t7kk:latest,ICAL_URL_B1805_1BR=ical-url-b7l2:latest,ICAL_URL_RVG_B920=ical-url-keqo:latest,ICAL_URL_LV_1319=ical-url-d2hg:latest,ICAL_URL_LV_1709_2BR=ical-url-7vnp:latest,ICAL_URL_LV_1709_1BR=ical-url-9j4q:latest,ICAL_URL_B3406_2BR=ical-url-b346:latest,ICAL_URL_B3406_1BR=ical-url-b341:latest   # must match config/listings.json (tested)
   _CLEAN_IMAGE: asia-southeast1-docker.pkg.dev/airbnb-business-hq/airbnb-hq/cleaning-sync
 
 steps:
@@ -31,12 +32,11 @@ steps:
     args:
       - -c
       - |
-        secrets=$$(python3 -c "import json;print(','.join('ICAL_URL_%s=%s:latest'%(l['key'],l['secret']) for l in json.load(open('config/listings.json'))['listings']))")
         gcloud run jobs deploy live-availability --region ${_REGION} \
           --image ${_IMAGE}:${SHORT_SHA} --service-account ${_SA} \
           --max-retries 1 --task-timeout 300 \
           --set-env-vars SPREADSHEET_ID=${_SPREADSHEET_ID},WRITE_ALLOWED_IDS=${_SPREADSHEET_ID},HORIZON_DAYS=60 \
-          --set-secrets "$$secrets"
+          --set-secrets "${_LIVE_SECRETS}"
 
   # ---- cleaning sync, SCRATCH job only. `jobs update` changes the image and args; env vars, secrets,
   # service account and schedule stay exactly as configured on the job (scratch sheet 1GxwOX..., tab tasks).

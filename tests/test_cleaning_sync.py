@@ -439,3 +439,13 @@ def test_report_lists_date_moves_waiting_for_owner():
     assert ops_of(res, "MOVE_DATE")
     rows = mismatch_report(res["ops"], set(), dt.datetime(2026, 11, 22))
     assert any(r[1] == "Date change: confirm" and r[4] == "MOVE_DATE" for r in rows[2:])
+
+
+
+def test_cloudbuild_live_secrets_cover_every_listing():
+    import json, yaml
+    root = os.path.join(os.path.dirname(__file__), "..")
+    cb = yaml.safe_load(open(os.path.join(root, "cloudbuild.yaml")))
+    got = set(cb["substitutions"]["_LIVE_SECRETS"].split(","))
+    ls = json.load(open(os.path.join(root, "config", "listings.json")))["listings"]
+    assert got == {f"ICAL_URL_{l['key']}={l['secret']}:latest" for l in ls}
