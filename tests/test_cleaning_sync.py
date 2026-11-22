@@ -449,3 +449,36 @@ def test_cloudbuild_live_secrets_cover_every_listing():
     got = set(cb["substitutions"]["_LIVE_SECRETS"].split(","))
     ls = json.load(open(os.path.join(root, "config", "listings.json")))["listings"]
     assert got == {f"ICAL_URL_{l['key']}={l['secret']}:latest" for l in ls}
+
+
+
+def test_auto_move_only_when_calendar_and_earnings_agree():
+    t = task(date=dt.date(2026, 11, 24))
+    b = Booking(CODE, APT, dt.date(2026, 11, 20), dt.date(2026, 11, 25), "RESERVED")
+    agree = LedgerView(entries={CODE: LedgerEntry(code=CODE, apt=APT, live=True, end=dt.date(2026, 11, 25))},
+                       latest_import=dt.datetime(2026, 11, 22))
+    old = LedgerView(entries={CODE: LedgerEntry(code=CODE, apt=APT, live=True, end=dt.date(2026, 11, 24))},
+                     latest_import=dt.datetime(2026, 11, 22))
+    assert ops_of(run_plan([t], [b], led=agree), "AUTO_MOVE") and not ops_of(run_plan([t], [b], led=agree), "MOVE_DATE")
+    assert ops_of(run_plan([t], [b], led=old), "MOVE_DATE") and not ops_of(run_plan([t], [b], led=old), "AUTO_MOVE")
+    assert ops_of(run_plan([t], [b]), "MOVE_DATE")                      # no ledger: owner decides
+    sheet = FakeSheet([row_of(t)])
+    writer.commit(sheet, run_plan([t], [b], led=agree)["ops"], (), TODAY, dry_run=False)
+    assert sheet.rows[0][H.index("Date")] == "2026-11-25" and sheet.rows[0][H.index("Status")] == "PLANNED"
+    t2 = task(date=dt.date(2026, 11, 24), status="CONFIRMED")
+    assert not ops_of(run_plan([t2], [b], led=agree), "AUTO_MOVE")
+
+
+def test_early_checkout_surfaces_when_nights_rebooked():
+    # HMFH9EJDYX case: task Dec 4, guest left Nov 19, earnings still lists it (paid), new booking holds Dec 3
+    t = task(date=dt.date(2026, 12, 4))
+    other = Booking("HMNEWW0001", APT, dt.date(2026, 12, 1), dt.date(2026, 12, 5), "RESERVED")
+    led = LedgerView(entries={CODE: LedgerEntry(code=CODE, apt=APT, paid=True)}, latest_import=dt.datetime(2026, 11, 22))
+    res = run_plan([t], [other], led=led)
+    g = ops_of(res, "GONE_FROM_CALENDAR")
+    assert g and "HMNEWW0001" in g[0]["detail"]
+    assert not ops_of(res, "AUTO_CANCEL") and not ops_of(res, "PROPOSE_CANCEL")
+    # plain lag (nothing re-booked): silent on the first poll, surfaced once it persists
+    first = run_plan([t], [], led=led)
+    assert ops_of(first, "LEDGER_ACTIVE") and not ops_of(first, "GONE_FROM_CALENDAR")
+    assert ops_of(run_plan([t], [], led=led, miss={t.key: 3}), "GONE_FROM_CALENDAR")
