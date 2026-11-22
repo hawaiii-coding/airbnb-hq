@@ -168,6 +168,8 @@ def run(args, service=None, fetch=None, env=os.environ, gcs_client=None):
     applied = resolved_ids(report.get("commit"))
     mrows = mismatch_report(res["ops"], applied, now_hcmc())
     report["mismatch_report"] = {"issues": len(mrows) - 2}
+    from .planner import ACTION_OPS
+    report["actions"] = sorted({f"{o['op']} {o['apt']} {o['date']}" for o in res["ops"] if o["op"] in ACTION_OPS})
     pid = env.get("PLAN_REPORT_SPREADSHEET_ID", "")
     if args.mode == "plan" and pid:
         try:   # read-only run: copy the plan to a NON-production sheet (scratch) so it can be reviewed there
@@ -215,6 +217,8 @@ def main():
     ap.add_argument("--rate-card", default=os.path.join(os.path.dirname(__file__), "..", "rate_card.json"))
     report = run(ap.parse_args())
     print(json.dumps(report, indent=1, default=str))
+    if report.get("actions"):              # matched by the "Cleaning sync needs you" email policy
+        print("CLEANING_SYNC_ACTION: " + "; ".join(report["actions"]))
     if report.get("ready_line"):
         print(report["ready_line"])          # matched by the "Sunday messages ready" email policy
     for a in alerts(report):
